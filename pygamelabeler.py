@@ -185,16 +185,8 @@ def getBoxWriteLine(box):
 #In order to display the boxes over the image, I need their X1, Y1, X2, and Y2 values in image coords.
 #I also need the values as separate elements in a list in order to be easily referenced.
 def calculateNormalizedBoxNumbers(label, boxX1, boxY1, boxX2, boxY2, imageWidth, imageHeight, labels):
-	#Find position of label in labels, that's the labelIndex
-	#there's definitely a better way to do this I'm sure...I'll find it later...
-	labelIndex = -1  #If you see -1 in your annotation file, we know there's a problem here with matching label to labels
-	count = 0
-	for temp in labels:
-		if label == temp:
-			labelIndex = count
-			break  #We found it, exit the loop
-		else:
-			count += 1
+
+	labelIndex = labels.index(label)  #LOL, oof...I knew there was something easy  https://stackoverflow.com/questions/176918/how-to-find-the-index-for-a-given-item-in-a-list
 
 	#make sure to first get the actual position of the boxX1, boxX2, boxY1, and boxY2 in the image, just in case the window is not at upper left of the screen
 	boxWidth = boxX2 - boxX1
