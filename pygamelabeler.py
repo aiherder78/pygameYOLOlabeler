@@ -304,6 +304,7 @@ def getImage(inputDirectory, imageFilename):
 
 
 #TODO:  Make this method much smaller later, once it's working, refactor out the draw stuff again
+#TODO:  MAJOR code cleanup here
 def drawLoop(filenamesList, inputDirectory, labels):
 	pygame.init()
 	#Clear the screen and paste the first image
@@ -376,12 +377,15 @@ def drawLoop(filenamesList, inputDirectory, labels):
 						#boxY2 = pos[1] - imageTopLeftY  #tempBoxLowerRightY
 						boxX2 = pos[0]
 						boxY2 = pos[1]
+						rectWidth = boxX2 - boxX1
+						rectHeight = boxY2 - boxY1
 
 						#box = calculateNormalizedBoxNumbers(imageWidth, imageHeight, boxX1, boxX2, boxY1, boxY2, labelIndex)
 						#addAnnotationFileBox(inputDirectory, imageFilename, box)
-						boxes.append(label, boxX1, boxY1, boxX2, boxY2)
+						boxList = [label, boxX1, boxY1, rectWidth, rectHeight]  #Now it's a list of lists, so more debugging down the method chain will be required
+						boxes.append(boxList)
 						
-						boxX1, boxY1, boxX2, boxY2 = None
+						boxX1, boxY1, boxX2, boxY2 = None, None, None, None
 					
 					elif boxX1 == None:
 						
@@ -395,7 +399,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 				#	removeNearestBox()
 
 				if event.button == 3:  # right-click --> clear the set box positions
-					boxX1, boxY1, boxX2, boxY2 = None
+					boxX1, boxY1, boxX2, boxY2 = None, None, None, None
 
 				if event.button == 4:  # scroll-up
 					#Change label previous (if not already #1)
@@ -411,8 +415,11 @@ def drawLoop(filenamesList, inputDirectory, labels):
 
 			'''
 			#handle keyboard button presses:
-			if event.type == pygame. ??
+			if event.type == pygame.   --> if 's' is presed
 				#first thing to handle here is 's' - save all the boxes to image annotation file, then load the next image
+					#boxes = []
+					#get and initialize a new image and imageCleanSurface
+					#null out the box value tracking points  boxX1, boxY1, boxX2, boxY2 = None, None, None, None
 			'''
 		
 		#imageCleanSurface = pygame.image.frombytes(imageByteBuffer)
@@ -444,29 +451,26 @@ def drawLoop(filenamesList, inputDirectory, labels):
 			rectangleWidth = mouseX - boxX1
 			rectangleHeight = mouseY - boxY1
 			
-			print("Entered rectangle print block - rectangle:  (x1, y1, width, height): (" + str(mouseX) + ", " + str(mouseY) + ", " + str(rectangleWidth) + ", " + str(rectangleHeight) + ")")
+			#print("Entered rectangle print block - rectangle:  (x1, y1, width, height): (" + str(mouseX) + ", " + str(mouseY) + ", " + str(rectangleWidth) + ", " + str(rectangleHeight) + ")")
 			if rectangleWidth > 0 and rectangleHeight > 0:
 				#scratchArray = pygame.surfarray.array3d(imageCleanArray)  #creates a copy of the pixel data
 				#draw a red box from the marked X, Y to the mouse cursor position (X2, Y2)
 				pygame.draw.rect(scratchSurface, red, (boxX1, boxY1, rectangleWidth, rectangleHeight), width=3)
 				#scratchSurface = pygame.surfarray.make_surface(scratchArray)
-				window.blit(scratchSurface, (0, 0))
-			
-			#window.blit(imageScratchSurface, (0, 0))
 			
 			#Note:  I need to blit the label on the top line (in the middle of the line between X1, Y1 and X2, Y1)
 			#Note:  I might need to draw my own rect line by line so that I can put the font on the top line without the line going through it (so essentially I'd have two lines
 			#for the top one)
 		
-		'''
-		#TODO:  Do final debugging / get this working once the temp boxes are going
-		#Draw all the boxes we've already set
 		if len(boxes) > 0:
+			print("Entering boxes rectangle draw")
 			#drawBoxesOnImage(image, boxes, labels)
 			for box in boxes:
-				pygame.draw.rect(window, (0, 0, 255), 			#well....that was easy...bet the fonts won't be nearly as easy when doing a bunch of them
-                			[x1, y1, x2, y2], 2)  #the last number is the thickness of the rectangle lines
-		'''
+				pygame.draw.rect(scratchSurface, red, (box[1], box[2], box[3], box[4]), width=3)
+			
+			#probably going to need to make my own rectangle drawing function to take care of the labels - not to show the line through the label while having it sit on the top line
+
+		window.blit(scratchSurface, (0, 0))
 		
 		#I might put all the font blitting here after making a full list of labels with image coords for display on top of the image.
 		
