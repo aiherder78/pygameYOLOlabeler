@@ -314,6 +314,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 						label_index += 1
 						label = labels(label_index)
 
+			'''
 			#handle keyboard button presses:
 			if event.type == pygame
 
@@ -321,9 +322,10 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					pos = pygame.mouse.get_pos()
 					drawBoxesOnImage()
 					drawTempBoxOnImage(x1, y1, pos[0], pos[1], label)
+			'''
 
-					game.display.blit(image, (0, 0))
-					pygame.display.update()
+		game.display.blit(image, (0, 0))
+		pygame.display.update()
 
 	pygame.quit()
 
@@ -335,7 +337,7 @@ def main():
 	labels = getLabels(inputDirectory, "labels.txt")
 
 	if filenamesList.len > 0:
-		drawLoop(filenamesList, inputDirectory)
+		drawLoop(filenamesList, inputDirectory, labels)
 
 	else:
 		print("Sorry, the input directory is empty of recognized image files.")
