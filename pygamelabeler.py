@@ -236,30 +236,32 @@ def addAnnotationFileBox(inputDirectory, imageFilename, imageWidth, imageHeight,
 		annotationFile.write(line)
 
 
-#TODO first get the script running without dropping out from errors.
-#TODO second, get the drawloop posting images up on screen
-#TODO third, get the boxes drawing on the images
-#TODO lastly, for this method specifically, get the labels blitting on all the different boxes...I'm probably going to have to do them all in a row here, will need another list variable
-def drawBoxOnWindow(label, x1, y1, x2, y2, myfont):
+#I'm just going to put the draw method stuff in the main loop for now, hopefully I can keep it simple.
+#def drawBoxOnWindow(label, x1, y1, x2, y2, myfont):
 	# Draw the boxes and put the label on its top line in a font
 	#https://stackoverflow.com/questions/10077644/how-to-display-text-with-font-and-color-using-pygame
 	#https://www.geeksforgeeks.org/pygame-drawing-objects-and-shapes/
 	
-	#keep the image object as a reference, do a full window fill every time, and always write the image, then boxes, then tempbox every time
+	#keep the image object as a reference, do a full window fill every time, and always write the image to the display, then boxes, then tempbox every time
 	#pygame.draw.rect(window, (0, 0, 255), 			#well....that was easy...bet the fonts won't be nearly as easy when doing a bunch of them
         #         [x1, y1, x2, y2], 2)  #the last number is the thickness of the rectangle lines
         #Note, keeping this method for reference, though I'm putting it in the drawloop directly for now.  If I end up making icons or anything like that, I'll need to do something more complex.
         #I probably won't, the whole reason for making this was to have a lower level tool that's much simpler / more rugged.
+        
+        #https://stackoverflow.com/questions/25149892/how-to-get-the-width-of-text-using-pygame
+        #text_width, text_height = self.font.size("txt")
+        #textWidth, textHeight = myfont(label)
+        #screen.blit(my_text, displayX, displayY)  #will put the font in starting at displayX, displayY
 
 
 #This is entirely so that box lines will follow the mouse cursor / be visible between your first left-click and second left-click when creating a box.
 #Remember, right-click to cancel box creation (before left-clicking the second time)
-def drawTempBoxOnImage(image, imageWidth, imageHeight, x1, y1, label, myfont):
+#def drawTempBoxOnImage(image, imageWidth, imageHeight, x1, y1, label, myfont):
 	#image = drawBoxesOnImage(image, imageWidth, imageHeight, labels)  #going to move this call to the drawloop for now
 	
 	#Now draw a single temp box based on where the mouse cursor is:
 	#https://www.pygame.org/docs/ref/mouse.html#pygame.mouse.get_pos
-	x2, y2 = pygame.mouse.get_pos() #get the mouse cursor position for the next step
+	#x2, y2 = pygame.mouse.get_pos() #get the mouse cursor position for the next step
 	
 	#I always want the x1 and y1 to be the upper left corner, so if order is switched, put them in the right order
 	#Hmmm...if I click for the first time then go up and left, I'm messing up my drawloop variables...might need to think about this one...
@@ -275,12 +277,13 @@ def drawTempBoxOnImage(image, imageWidth, imageHeight, x1, y1, label, myfont):
 		y2 = y1temp
 	'''
 	
-	drawBoxOnWindow(label, x1, y1, x2, y2, myfont)
+	#drawBoxOnWindow(label, x1, y1, x2, y2, myfont)
 
 
 #TODO:  I'll get this working later once I get the temp box displaying
 #I'm not sure how I'm going to do so many label fonts yet - I'll probably need a separate list to keep track with positions, then
 #blit them all to the screen at once since pygame doesn't blit to image files as far as I know and I want to keep the image files themselves clean anyway.
+'''
 def drawBoxes(image, boxes, labels):
 	imageWidth, imageHeight = image.size
 	for box in boxes:
@@ -288,6 +291,7 @@ def drawBoxes(image, boxes, labels):
 		label = labels[labelIndex]
 		image = drawBoxOnImage(drawBox[1], drawBox[2], drawBox[3], drawBox[4], label)
 	return image
+'''
 	
 
 #I'm going to test only progressing forward through boxes and images first, then I'll add box delete functionality
@@ -303,6 +307,7 @@ def getImage(inputDirectory, imageFilename):
 	return image, imageWidth, imageHeight
 
 
+#TODO:  Make this method much smaller later, once it's working, refactor out the draw stuff again
 def drawLoop(filenamesList, inputDirectory, labels):
 	pygame.init()
 	#Clear the screen and paste the first image
@@ -336,21 +341,27 @@ def drawLoop(filenamesList, inputDirectory, labels):
 		boxX2 = None #tempBoxLowerRightX
 		boxY2 = None #tempBoxLowerRightY
 
-		#First order of business is just to get the debugging / testing done for recording annotation boxes and displaying them properly over the image (and getting the images displayed)
-		#Then start iterating over images and making sure that box data is properly reflected / kept / able to be retrieved later and works.
+		#First get the temp boxes displaying and this thing running with no errors on start / drawLoop getting through while clicking the first time for a temp box.
 		for event in pygame.event.get():
+		
 			if event.type == pygame.QUIT:
 				running = False
 
 			#https://stackoverflow.com/questions/10990137/pygame-mouse-clicking-detection
 			if event.type == pygame.MOUSEBUTTONDOWN:
-
+			
 				if event.button == 1:  # left click
+				
+					pos = pygame.mouse.get_pos()
+					
 					#A backup might be:  https://stackoverflow.com/questions/25848951/python-get-mouse-x-y-position-on-click
 					if boxX1 == None:
+						
 						boxX1 = pos[0] - imageTopLeftX  #tempBoxUpperLeftX   #TODO I'm not too sure about these lines yet...plenty of debugging ahead...
 						boxY1 = pos[1] - imageTopLeftY #tempBoxUpperLeftY
+						
 					else if boxX1 is not None and boxX2 == None:
+					
 						boxX2 = pos[0] - imageTopLeftX  #tempBoxLowerRightX
 						boxY2 = pos[1] - imageTopLeftY  #tempBoxLowerRightY
 
@@ -401,7 +412,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 			
 			#Note:  I need to blit the label on the top line (in the middle of the line between X1, Y1 and X2, Y1)
 			#Note:  I might need to draw my own rect line by line so that I can put the font on the top line without the line going through it (so essentially I'd have two lines
-			#		for the top one)
+			#for the top one)
 		
 		'''
 		#TODO:  Do final debugging / get this working once the temp boxes are going
@@ -413,8 +424,8 @@ def drawLoop(filenamesList, inputDirectory, labels):
                 			[x1, y1, x2, y2], 2)  #the last number is the thickness of the rectangle lines
 		'''
 		
-		
 		#I might put all the font blitting here after making a full list of labels with image coords for display on top of the image.
+		
 		pygame.display.update()
 
 	pygame.quit()
