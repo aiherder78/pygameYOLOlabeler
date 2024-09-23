@@ -120,35 +120,64 @@ def getAnnotationFileName(inputDirectory, imageFilename):
 	annotationFileFullpath = inputDirectory / annotationFilename
 	
 	return annotationFileFullpath
+
+
+#Just give me values I can work with on screen:
+def getBoxValuesFromStrings(box, imageWidth, imageHeight, labels):
+	labelIndexStr, normalizedBoxCentroidXStr, normalizedBoxCentroidYStr, normalizedBoxWidthStr, normalizedBoxHeightStr = box.slit()
+	label = labels[int(labelIndexStr)]
+	normalizedBoxCentroidX = float(normalizedBoxCentroidXStr)
+	normalizedBoxCentroidY = float(normalizedBoxCentroidYStr)
+	normalizedBoxWidth = float(normalizedBoxWidthStr)
+	normalizedBoxHeight = float(normalizedBoxHeightStr)
+	
+	box = [label, normalizedBoxCentroidX, normalizedBoxCentroidY, normalizedBoxWidth, normalizedBoxHeight]
+	
+	return box
+
+
+#TODO May need some debugging - box may not be in this format, it's a string right now
+def getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labels):
+	box = getBoxValuesFromStrings(box, imageWidth, imageHeight, labels)
+	
+	normalizedBoxCenterX = box[1]
+	normalizedBoxCenterY = box[2]
+	normalizedBoxWidth = box[3]
+	normalizedBoxHeight = box[4]
+	
+	boxCenterX = normalizedBoxCenterX * imageWidth
+	boxCenterY = normalizedBoxCenterY * imageHeight
+	boxWidth = normalizedBoxWidth * imageWidth
+	boxHeight = normalizedBoxHeight * imageHeight
+	
+	boxX1 = boxCenterX - (boxWidth / 2)
+	boxY1 = boxCenterX - (boxHeight / 2)
+	boxX2 = boxCenterX + (boxWidth / 2)
+	boxY2 = boxCenterY + (boxHeight / 2)
+	
+	boxDataForDrawing = [label, boxX1, boxY1, boxX2, boxY2]
+	
+	return boxDataForDrawing
 	
 
 #See calculateNormalizedBoxNumbers for exact formatting instructions / how to calculate them.
-def getBoxesFromAnnotationFile(inputDirectory, imageFilename):
+def getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels):
 	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
 	
+	rawBoxes = []
 	boxes = []
 	with open(annotationFileFullpath, "r") as annotationFile:
 		for line in annotationFile:
 			boxes.append(line.rstrip())   #append to the boxes list without the "\n" line breaks
 	
+	for box in rawBoxes:
+		boxForDrawing = getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labels)
+		boxes.append()
+	
 	return boxes
 
 
-#I'll run this when saving the annotation file or when deleting a box.  When just adding a single box, I'll run addAnnotationFileBox() which opens the file in append mode.
-def setAnnotationFileBoxes(inputDirectory, imageFilename, boxes):
-	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
-	with open(annotationFileFullpath, "w") as annotationFile:
-		for box in boxes:
-			annotationFile.write(box + "\n")
-
-
-def addAnnotationFileBox(inputDirectory, imageFilename, box):
-	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
-	with open(annotationFileFullpath, "a") as annotationFile:
-		annotationFile.write(box + "\n")
-
-
-def calculateNormalizedBoxNumbers(imageWidth, imageHeight, boxX1, boxX2, boxY1, boxY2, labelIndex):
+def calculateNormalizedBoxNumbers(labelIndex, boxX1, boxY1, boxX2, boxY2, imageWidth, imageHeight):
 	#make sure to first get the actual position of the boxX1, boxX2, boxY1, and boxY2 in the image, just in case the window is not at upper left of the screen
 	boxWidth = boxX2 - boxX1
 	boxHeight = boxY2 - boxY1
@@ -166,36 +195,43 @@ def calculateNormalizedBoxNumbers(imageWidth, imageHeight, boxX1, boxX2, boxY1, 
 	#Class labels come from labels.txt and are zero indexed -> so if you had labels:  dog  cat, dog's labelIndex would be 0, cat's label index would be 1.
 	#Each row's format is: labelIndex normalizedBoxCenterX normalizedBoxCenterY normalizedBoxWidth normalizedBoxHeight
 	
-	boxFileLine = labelIndex + " " + normalizedCenterX + " " + normalizedCenterY + " " + normalizedWidth + " " + normalizedHeight + "\n"
+	box = [labelIndex, normalizedCenterX, normalizedCenterY, normalizedWidth, normalizedHeight]
 	
-	return boxFileLine  #Here's another thing I'm not sure about yet - how easy will it be to parse the string in this format for image screen drawing?
+	return box
+	
+
+def getBoxWriteLine(box):
+	return box[0] + " " + box[1] + " " + box[2] + " " + box[3] + " " + box[4] + "\n"
+	
+
+#I'll run this when saving the annotation file or when deleting a box.  When just adding a single box, I'll run addAnnotationFileBox() which opens the file in append mode.
+def setAnnotationFileBoxes(inputDirectory, imageFilename, imageWidth, imageHeight, boxes):
+	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
+	with open(annotationFileFullpath, "w") as annotationFile:
+		for box in boxes:
+			box = calculateNormalizedBoxNumbers(box[0], box[1], box[2], box[3], box[4], imageWidth, imageHeight)
+			line = getBoxWriteLine(box)
+			annotationFile.write(line)
 
 
-#TODO May need some debugging - box may not be in this format, it's a string right now
-def getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight):
-	normalizedBoxCenterX = box[1]
-	normalizedBoxCenterY = box[2]
-	normalizedBoxWidth = box[3]
-	normalizedBoxHeight = box[4]
-	
-	boxCenterX = normalizedBoxCenterX * imageWidth
-	boxCenterY = normalizedBoxCenterY * imageHeight
-	boxWidth = normalizedBoxWidth * imageWidth
-	boxHeight = normalizedBoxHeight * imageHeight
-	
-	boxX1 = boxCenterX - (boxWidth / 2)
-	boxY1 = boxCenterX - (boxHeight / 2)
-	boxX2 = boxCenterX + (boxWidth / 2)
-	boxY2 = boxCenterY + (boxHeight / 2)
-	
-	return boxX1, boxY1, boxX2, boxY2
+def addAnnotationFileBox(inputDirectory, imageFilename, imageWidth, imageHeight, box):
+	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
+	box = calculateNormalizedBoxNumbers(box[0], box[1], box[2], box[3], box[4], imageWidth, imageHeight)
+	line = getBoxWriteLine(box)
+	with open(annotationFileFullpath, "a") as annotationFile:
+		annotationFile.write(line)
 
 
-def drawBoxOnImage(image, x1, y1, x2, y2, label):
+def drawBoxOnImage(image, imageWidth, imageHeight, box, labels, myfont):
 	# Draw the boxes and put the label on its top line in a font
 	#https://stackoverflow.com/questions/10077644/how-to-display-text-with-font-and-color-using-pygame
 	#https://www.geeksforgeeks.org/pygame-drawing-objects-and-shapes/
-
+	[label, boxX1, boxY1, boxX2, boxY2] = getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labels)
+	
+	pygame.draw.rect(window, (0, 0, 255), 
+                 [boxX1, boxY1, boxX2, boxY2], 2)
+        
+        
 
 def drawBoxesOnImage(image, boxes, labels):
 	imageWidth, imageHeight = image.size
@@ -257,6 +293,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 	#https://stackoverflow.com/questions/4135928/pygame-display-position
 	game_dislay = pygame.display.set_mode((imageWidth, imageHeight))
 	window.fill((0, 0, 0))
+	myfont = pygame.font.SysFont("monospace", 10)
 	while running and image is not None:
 		#Just being paranoid here about possible pygame window repositions by the user
 		size = pygame.display.Info() #x, y, width, height
@@ -295,6 +332,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 						box = calculateNormalizedBoxNumbers(imageWidth, imageHeight, boxX1, boxX2, boxY1, boxY2, labelIndex)
 						addAnnotationFileBox(inputDirectory, imageFilename, box)
 						boxes.append(box)
+						
 
 				#if event.button == 2:  # middle-click    #TODO:  Add this later and test/debug
 				#	removeNearestBox()
