@@ -165,14 +165,17 @@ def getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageH
 	
 	rawBoxes = []
 	boxes = []
-	with open(annotationFileFullpath, "r") as annotationFile:
-		for line in annotationFile:
-			boxes.append(line.rstrip())   #append to the boxes list without the "\n" line breaks
+	try:
+		with open(annotationFileFullpath, "r") as annotationFile:
+			for line in annotationFile:
+				boxes.append(line.rstrip())   #append to the boxes list without the "\n" line breaks
 	
-	for box in rawBoxes:
-		boxForDrawing = getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labels)
-		boxes.append()
-	
+		for box in rawBoxes:
+			boxForDrawing = getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labels)
+			boxes.append()
+	except OSError as e:
+		print("Annotation file does not exist yet, we'll make it later: " + str(annotationFileFullpath))
+
 	return boxes
 
 
@@ -287,10 +290,10 @@ def drawBoxes(image, boxes, labels):
 	
 
 #I'm going to test only progressing forward through boxes and images first, then I'll add box delete functionality
-def removeBoxFromBoxes(label_index, x1, y1, x2, y2, imageWidth, imageHeight, imageFileName):
+#def removeBoxFromBoxes(label_index, x1, y1, x2, y2, imageWidth, imageHeight, imageFileName):
 	#TODO
-
-
+	
+	
 #https://stackoverflow.com/questions/6444548/how-do-i-get-the-picture-size-with-pil
 #Could also do these with cv2:  https://python-code.dev/articles/110664770  #images would be numpy arrays in this case, could be important for optimizing (if needed later)
 def getImage(inputDirectory, imageFilename):
@@ -308,9 +311,9 @@ def drawLoop(filenamesList, inputDirectory, labels):
 	label = labels[labelIndex]
 	running = True
 	filenamesListOffset = 0
-	imageFileName = filenamesList[filenamesListOffset]
-	image, imageWidth, imageHeight = getImage(inputDirectory, imageFileName)
-	boxes = getBoxesFromAnnotationFile(inputDirectory, imageFilename) #just in case there are already annotations for this image...
+	imageFilename = filenamesList[filenamesListOffset]
+	image, imageWidth, imageHeight = getImage(inputDirectory, imageFilename)
+	boxes = getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels) #just in case there are already annotations for this image...
 	
 	#https://stackoverflow.com/questions/4135928/pygame-display-position
 	game_dislay = pygame.display.set_mode((imageWidth, imageHeight))
@@ -321,10 +324,10 @@ def drawLoop(filenamesList, inputDirectory, labels):
 		size = pygame.display.Info() #x, y, width, height
 		imageTopLeftX = size[0]
 		imageTopLeftY = size[1]
-		if size[2] not imageWidth:
+		if size[2] != imageWidth:
 			print("Strange - size[2] from pygame.display.Info() is not the same as the image.size[2] (imageWidth) gotten from getImage()!! - debugging needed.")
 		imageWidth = size[2]
-		if size[3] not imageHeight:
+		if size[3] != imageHeight:
 			print("Strange - size[3] from pygame.display.Info() is not the same as the image.size[3] (imageHeight) gotten from getImage()!! - debugging needed.")
 		imageHeight = size[3]
 		
@@ -352,7 +355,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 						boxX1 = pos[0] - imageTopLeftX  #tempBoxUpperLeftX   #TODO I'm not too sure about these lines yet...plenty of debugging ahead...
 						boxY1 = pos[1] - imageTopLeftY #tempBoxUpperLeftY
 						
-					else if boxX1 is not None and boxX2 == None:
+					elif boxX1 is not None and boxX2 == None:
 					
 						boxX2 = pos[0] - imageTopLeftX  #tempBoxLowerRightX
 						boxY2 = pos[1] - imageTopLeftY  #tempBoxLowerRightY
@@ -370,7 +373,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 
 				if event.button == 4:  # scroll-up
 					#Change label previous (if not already #1)
-					if label_index not 0:
+					if label_index != 0:    #You can't go back from 0.  If you see -1 in the annotation file for the class, then there's a bug.
 						label_index -= 1
 						label = labels[label_index]
 
@@ -382,12 +385,8 @@ def drawLoop(filenamesList, inputDirectory, labels):
 
 			'''
 			#handle keyboard button presses:
-			if event.type == pygame
-
-				if x1 not None:
-					pos = pygame.mouse.get_pos()
-					drawBoxesOnImage()
-					drawTempBoxOnImage(x1, y1, pos[0], pos[1], label)
+			if event.type == pygame. ??
+				#first thing to handle here is 's' - save all the boxes to image annotation file, then load the next image
 			'''
 		
 		#Do the display updates here
@@ -429,7 +428,7 @@ def main():
 
 	labels = getLabels(inputDirectory, "labels.txt")
 
-	if filenamesList.len > 0:
+	if len(filenamesList) > 0:
 		drawLoop(filenamesList, inputDirectory, labels)
 
 	else:
