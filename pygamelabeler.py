@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image   #pip install pillow
 import pygame   #pip install pygame
 from pygame.locals import *  #this is for drawing the box lines over the image (when you click for the corners + following the mouse cursor between clicks)
+from copy import copy
 
 #TODO:  Make the paths completely os agnostic - currently I'm coding for *nix paths
 #https://stackoverflow.com/questions/6036129/platform-independent-file-paths
@@ -309,6 +310,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
         #https://gamedevacademy.org/pygame-background-image-tutorial-complete-guide/
 	labelIndex = 0
 	label = labels[labelIndex]
+	red = (255, 0, 0)
 	running = True
 	filenamesListOffset = 0
 	imageFilename = filenamesList[filenamesListOffset]
@@ -316,25 +318,41 @@ def drawLoop(filenamesList, inputDirectory, labels):
 	boxes = getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels) #just in case there are already annotations for this image...
 	
 	#https://stackoverflow.com/questions/4135928/pygame-display-position
-	game_dislay = pygame.display.set_mode((imageWidth, imageHeight))
+	#imageByteBuffer = pygame.image.tobytes(imageFilename)
+	imageCleanSurface = pygame.image.load(imageFilename)
+	imageString = imageCleanSurface 
+	
+	window = pygame.display.set_mode((imageWidth, imageHeight))
+	
 	window.fill((0, 0, 0))
 	myfont = pygame.font.SysFont("monospace", 10)
+	
+	counter = 0
+	showCount = False
+	
+			
+	boxX1 = None #tempBoxUpperLeftX
+	boxY1 = None #tempBoxUpperLeftY
+	boxX2 = None #tempBoxLowerRightX
+	boxY2 = None #tempBoxLowerRightY
 	while running and image is not None:
+		if showCount:
+			print("Frame: " + str(counter))
+		counter += 1
 		#Just being paranoid here about possible pygame window repositions by the user
 		size = pygame.display.Info() #x, y, width, height
-		imageTopLeftX = size[0]
-		imageTopLeftY = size[1]
-		if size[2] != imageWidth:
+		displayWidth = size.current_w
+		displayHeight = size.current_h
+		#print("Display details: " + str(size))
+		#print("Current width: " + str(displayWidth) + ", current display height: " + str(displayHeight))
+		#print("Image width: " + str(imageWidth) + ", image height: " + str(imageHeight))
+		#imageTopLeftX = size.current_w
+		#imageTopLeftY = size.current_h
+		if displayWidth != imageWidth:
 			print("Strange - size[2] from pygame.display.Info() is not the same as the image.size[2] (imageWidth) gotten from getImage()!! - debugging needed.")
-		imageWidth = size[2]
-		if size[3] != imageHeight:
+		if displayHeight != imageHeight:
 			print("Strange - size[3] from pygame.display.Info() is not the same as the image.size[3] (imageHeight) gotten from getImage()!! - debugging needed.")
-		imageHeight = size[3]
-		
-		boxX1 = None #tempBoxUpperLeftX
-		boxY1 = None #tempBoxUpperLeftY
-		boxX2 = None #tempBoxLowerRightX
-		boxY2 = None #tempBoxLowerRightY
+
 
 		#First get the temp boxes displaying and this thing running with no errors on start / drawLoop getting through while clicking the first time for a temp box.
 		for event in pygame.event.get():
@@ -343,33 +361,41 @@ def drawLoop(filenamesList, inputDirectory, labels):
 				running = False
 
 			#https://stackoverflow.com/questions/10990137/pygame-mouse-clicking-detection
-			if event.type == pygame.MOUSEBUTTONDOWN:
+			if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_focused():
+				print("received mouse click")
 			
 				if event.button == 1:  # left click
 				
 					pos = pygame.mouse.get_pos()
-					
-					#A backup might be:  https://stackoverflow.com/questions/25848951/python-get-mouse-x-y-position-on-click
-					if boxX1 == None:
+					print("Received left click: " + str(pos[0]) + ", " + str(pos[1]))
 						
-						boxX1 = pos[0] - imageTopLeftX  #tempBoxUpperLeftX   #TODO I'm not too sure about these lines yet...plenty of debugging ahead...
-						boxY1 = pos[1] - imageTopLeftY #tempBoxUpperLeftY
-						
-					elif boxX1 is not None and boxX2 == None:
+					if boxX1 is not None and boxX2 == None:
+						print("received left click X2")
 					
-						boxX2 = pos[0] - imageTopLeftX  #tempBoxLowerRightX
-						boxY2 = pos[1] - imageTopLeftY  #tempBoxLowerRightY
+						#boxX2 = pos[0] - imageTopLeftX  #tempBoxLowerRightX
+						#boxY2 = pos[1] - imageTopLeftY  #tempBoxLowerRightY
+						boxX2 = pos[0]
+						boxY2 = pos[1]
 
-						box = calculateNormalizedBoxNumbers(imageWidth, imageHeight, boxX1, boxX2, boxY1, boxY2, labelIndex)
-						addAnnotationFileBox(inputDirectory, imageFilename, box)
-						boxes.append(box)
+						#box = calculateNormalizedBoxNumbers(imageWidth, imageHeight, boxX1, boxX2, boxY1, boxY2, labelIndex)
+						#addAnnotationFileBox(inputDirectory, imageFilename, box)
+						boxes.append(label, boxX1, boxY1, boxX2, boxY2)
+						
+						boxX1, boxY1, boxX2, boxY2 = None
+					
+					elif boxX1 == None:
+						
+						#boxX1 = pos[0] - imageTopLeftX  #tempBoxUpperLeftX   #TODO I'm not too sure about these lines yet...plenty of debugging ahead...
+						#boxY1 = pos[1] - imageTopLeftY #tempBoxUpperLeftY
+						boxX1 = pos[0]
+						boxY1 = pos[1]
 						
 
 				#if event.button == 2:  # middle-click    #TODO:  Add this later and test/debug
 				#	removeNearestBox()
 
 				if event.button == 3:  # right-click --> clear the set box positions
-					x1, y1, x2, y2 = None
+					boxX1, boxY1, boxX2, boxY2 = None
 
 				if event.button == 4:  # scroll-up
 					#Change label previous (if not already #1)
@@ -389,17 +415,44 @@ def drawLoop(filenamesList, inputDirectory, labels):
 				#first thing to handle here is 's' - save all the boxes to image annotation file, then load the next image
 			'''
 		
-		#Do the display updates here
-		game.display.blit(image, (0, 0))
+		#imageCleanSurface = pygame.image.frombytes(imageByteBuffer)
+		#imageScratchSurface = pygame.image.frombytes(imageByteBuffer)
 		
+		#Do the display updates here
+		window.fill((0, 0, 0))
+		window.blit(imageCleanSurface, (0, 0))
+		
+		scratchimage = pygame.image.tostring(imageCleanSurface, 'RGBA')
+		
+		#scratchSurface = pygame.Surface((imageWidth, imageHeight)) # I'm going to use 100x200 in examples
+		data = pygame.image.tostring(imageCleanSurface, 'RGBA')
+		#fromstring(bytes, size, format, flipped=False) -> Surface
+		surfaceSize = imageCleanSurface.get_size()
+		scratchSurface = pygame.image.fromstring(data, surfaceSize, 'RGBA', False)
+		
+		pos = pygame.mouse.get_pos()
+		#print("MouseXY " + str(pos[0]) + ", " + str(pos[1]) + ", X1 " + str(boxX1) + ", Y1 " + str(boxY1) + ", X2 " + str(boxX2) + ", Y2 " + str(boxY2))
 		#Now draw the boxes, starting with the temp box (if any) over the display
 		if boxX1 is not None and boxY1 is not None and boxX2 == None and boxY2 == None:
 			#We're not saving this image, it's just for display, we build/draw the boxes on each loop, so if we get rid of any boxes, they'll go away on next time through the loop
 			#image = drawTempBoxOnImage(image, imageWidth, imageHeight, boxX1, boxY1, label, myfont)
-			x2, y2 = pygame.mouse.get_pos()
-			#draw a red box from the marked X, Y to the mouse cursor position (X2, Y2)
-			pygame.draw.rect(window, (255, 255, 0),
-        		        [x1, y1, x2, y2], 2)
+			
+			mouseX = pos[0]
+			mouseY = pos[1]
+			
+			#pygame.draw.rect(surface or array, rgb color in format (r, g, b), (x1, y1, rectangle width, rectangle height))
+			rectangleWidth = mouseX - boxX1
+			rectangleHeight = mouseY - boxY1
+			
+			print("Entered rectangle print block - rectangle:  (x1, y1, width, height): (" + str(mouseX) + ", " + str(mouseY) + ", " + str(rectangleWidth) + ", " + str(rectangleHeight) + ")")
+			if rectangleWidth > 0 and rectangleHeight > 0:
+				#scratchArray = pygame.surfarray.array3d(imageCleanArray)  #creates a copy of the pixel data
+				#draw a red box from the marked X, Y to the mouse cursor position (X2, Y2)
+				pygame.draw.rect(scratchSurface, red, (boxX1, boxY1, rectangleWidth, rectangleHeight), width=3)
+				#scratchSurface = pygame.surfarray.make_surface(scratchArray)
+				window.blit(scratchSurface, (0, 0))
+			
+			#window.blit(imageScratchSurface, (0, 0))
 			
 			#Note:  I need to blit the label on the top line (in the middle of the line between X1, Y1 and X2, Y1)
 			#Note:  I might need to draw my own rect line by line so that I can put the font on the top line without the line going through it (so essentially I'd have two lines
@@ -417,7 +470,8 @@ def drawLoop(filenamesList, inputDirectory, labels):
 		
 		#I might put all the font blitting here after making a full list of labels with image coords for display on top of the image.
 		
-		pygame.display.update()
+		pygame.display.flip()
+		#pygame.display.update()  #btw, you can pass a rectangles into this...is that the surface?  will figure it out
 
 	pygame.quit()
 
