@@ -13,9 +13,8 @@ from pygame.locals import *  #this is for drawing the box lines over the image (
 
 
 #1.  Get input directory from argument OR detect any images in current directory
-#2.  Put all image file names into a list
-#3.  Check to see how many image types I can reasonably support with pygame.
-#4.  Load first image and enter loop:
+#2.  Put all image file names into a list (only inserting the image file types as determined by the extensions list)
+#3.  Load first image and enter loop:
 #	0.  'q' to exit program, saving any boxes first for image.
 #	    's' to save boxes for image and go to next image.
 #	   scroll the mouse wheel to change the class labels you will apply to any label boxes.
@@ -103,24 +102,29 @@ def getInputFilenames(mypath):
 	return files
 	
 
+#You are expected to put your labels in a file named "labels.txt" in the input directory.  See the example labels.txt given for format.
 def getLabels(inputDirectory, labelFileName):
 	labels = None
 	with open(os.path.join(inputDirectory, labelFileName)) as f:
 		labels = f.read().splitlines()
 	return labels
-
+			
 
 #The annotation file for a given image will have the same filename, except the prefix will be .txt  (so there will be a separate annotation file for each image that holds all the label box details)
-#The format for each line in the file is classNumber boxCenterX boxCenterY boxWidth boxHeight  --> these are all normalized (between 0 and 1, as a percentage of totalX, totalY, totalWidth, totalHeight
-#For instance, to find the boxCenterX, you'd first get the X of the box's center in the image, then do boxCenterX = boxCenterX / imageTotalX
-#Another example, to find the total box width, first find the box width (x2 - x1), then box normalized width = (box width) / (image width)
-def getBoxesFromAnnotationFile(inputDirectory, imageFileName):
+def getAnnotationFileName(inputDirectory, imageFilename):
 	inputDirectory = Path(inputDirectory)
-	filename, extension = os.path.splitext(imageFileName)  #get the image extension off the image file name
+	filename, extension = os.path.splitext(imageFilename)  #get the image extension off the image file name
 	
 	annotationFilename = filename + ".txt" #the image annotation file has the same first part of the name but the extension is ".txt" instead of the image extension.
 
 	annotationFileFullpath = inputDirectory / annotationFilename
+	
+	return annotationFileFullpath
+	
+
+#See calculateNormalizedBoxNumbers for exact formatting instructions / how to calculate them.
+def getBoxesFromAnnotationFile(inputDirectory, imageFilename):
+	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
 	
 	boxes = []
 	with open(annotationFileFullpath, "r") as annotationFile:
@@ -128,114 +132,195 @@ def getBoxesFromAnnotationFile(inputDirectory, imageFileName):
 			boxes.append(line.rstrip())   #append to the boxes list without the "\n" line breaks
 	
 	return boxes
+
+
+#I'll run this when saving the annotation file or when deleting a box.  When just adding a single box, I'll run addAnnotationFileBox() which opens the file in append mode.
+def setAnnotationFileBoxes(inputDirectory, imageFilename, boxes):
+	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
+	with open(annotationFileFullpath, "w") as annotationFile:
+		for box in boxes:
+			annotationFile.write(box + "\n")
+
+
+def addAnnotationFileBox(inputDirectory, imageFilename, box):
+	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
+	with open(annotationFileFullpath, "a") as annotationFile:
+		annotationFile.write(box + "\n")
+
+
+def calculateNormalizedBoxNumbers(imageWidth, imageHeight, boxX1, boxX2, boxY1, boxY2, labelIndex):
+	#make sure to first get the actual position of the boxX1, boxX2, boxY1, and boxY2 in the image, just in case the window is not at upper left of the screen
+	boxWidth = boxX2 - boxX1
+	boxHeight = boxY2 - boxY1
+	boxCenterX = boxX1 + (boxWidth / 2)
+	boxCenterY = boxY1 + (boxHeight / 2)  #assuming the Y values get higher as they go down the screen...it's been awhile since I referenced image Ys and pygame Ys.
 	
+	#Box coordinates must be normalized by the dimensions of the image (i.e. have values between 0 and 1)
+	normalizedBoxCenterX = boxCenterX / imageWidth
+	normalizedBoxCenterY = boxCenterY / imageHeight
+	normalizedBoxWidth = boxWidth / imageWidth
+	normalizedBoxHeight = boxHeight / imageHeight
+	#https://blog.paperspace.com/train-yolov5-custom-data/
+	#All of these values must be normalized, which we just calculated above
+	#One row per box (labels an object in an image)
+	#Class labels come from labels.txt and are zero indexed -> so if you had labels:  dog  cat, dog's labelIndex would be 0, cat's label index would be 1.
+	#Each row's format is: labelIndex normalizedBoxCenterX normalizedBoxCenterY normalizedBoxWidth normalizedBoxHeight
 	
-def drawBoxesOnImage(image, boxes, labels):
-	# Draw the image to window
+	boxFileLine = labelIndex + " " + normalizedCenterX + " " + normalizedCenterY + " " + normalizedWidth + " " + normalizedHeight + "\n"
+	
+	return boxFileLine  #Here's another thing I'm not sure about yet - how easy will it be to parse the string in this format for image screen drawing?
+
+
+#TODO May need some debugging - box may not be in this format, it's a string right now
+def getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight):
+	normalizedBoxCenterX = box[1]
+	normalizedBoxCenterY = box[2]
+	normalizedBoxWidth = box[3]
+	normalizedBoxHeight = box[4]
+	
+	boxCenterX = normalizedBoxCenterX * imageWidth
+	boxCenterY = normalizedBoxCenterY * imageHeight
+	boxWidth = normalizedBoxWidth * imageWidth
+	boxHeight = normalizedBoxHeight * imageHeight
+	
+	boxX1 = boxCenterX - (boxWidth / 2)
+	boxY1 = boxCenterX - (boxHeight / 2)
+	boxX2 = boxCenterX + (boxWidth / 2)
+	boxY2 = boxCenterY + (boxHeight / 2)
+	
+	return boxX1, boxY1, boxX2, boxY2
+
+
+def drawBoxOnImage(image, x1, y1, x2, y2, label):
 	# Draw the boxes and put the label on its top line in a font
 	#https://stackoverflow.com/questions/10077644/how-to-display-text-with-font-and-color-using-pygame
+	#https://www.geeksforgeeks.org/pygame-drawing-objects-and-shapes/
 
 
-def drawTempBoxOnImage(image, boxes, labels):
-	drawBoxesOnImage(image, boxes, labels)
+def drawBoxesOnImage(image, boxes, labels):
+	imageWidth, imageHeight = image.size
+	for box in boxes:
+		labelIndex = box[0]
+		label = labels[labelIndex]
+		x1, y1, x2, y2 = getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight)
+		image = drawBoxOnImage(image, x1, y1, x2, y2, label)
+	return image
+
+
+#This is entirely so that box lines will follow the mouse cursor / be visible between your first left-click and second left-click when creating a box.
+#Remember, right-click to cancel box creation (before left-clicking the second time)
+def drawTempBoxOnImage(image, x1, y1, label):
+	drawBoxesOnImage(image, boxes, labels)  #I always want the boxes that are already set to be drawn.
+	
+	#Now draw a single temp box based on where the mouse cursor is:
 	#https://www.pygame.org/docs/ref/mouse.html#pygame.mouse.get_pos
-	x, y = pygame.mouse.get_pos()
+	x2, y2 = pygame.mouse.get_pos() #get the mouse cursor position for the next step
+	
+	#I always want the x1 and y1 to be the upper left corner, so if order is switched, put them in the right order
+	if x1 > x2:
+		x1temp = x1
+		x1 = x2
+		x2 = x1temp
+	if y1 < y2:
+		y1temp = y1
+		y1 = y2
+		y2 = y1temp
+	
+	drawBoxOnImage(image, x1, y1, x2, y2, label)
 
-def addBoxToImageAnnotationFile(label_index, x1, y1, x2, y2, imageWidth, imageHeight, imageFileName):
-	width = x2 - x1
-	height = y2 - y1
-	center_x = x1 + width / 2   #LOL - I'm not sure I'm going the right way on these...my boxes might be screwed up
-	center_y = y1 + height / 2
 
-	#https://blog.paperspace.com/train-yolov5-custom-data/
-	#One row per object
-	#Each row is class x_center y_center width height format.
-	#Box coordinates must be normalized by the dimensions of the image (i.e. have values between 0 and 1)
-	#Class numbers are zero-indexed (start from 0).
-	normalizedCenterX = width 
-	normalizedCenterY = height / imageHeight
-	normalizedWidth = width / imageWidth
-	normalizedHeight = height / imageHeight
-
-	line = label_index + " " + normalizedCenterX + " " + normalizedCenterY + " " + normalizedWidth + " " + normalizedHeight + "\n"
-
-	with open(os.path.join(inputDirectory, imageFileName), 'a') as f:   #open the file in append mode
-		f.write(line)
-
-def removeBoxFromImageAnnotationFile(label_index, x1, y1, x2, y2, imageWidth, imageHeight, imageFileName):
+#I'm going to test only progressing forward through boxes and images first, then I'll add box delete functionality
+def removeBoxFromBoxes(label_index, x1, y1, x2, y2, imageWidth, imageHeight, imageFileName):
 	#TODO
+
+
+#https://stackoverflow.com/questions/6444548/how-do-i-get-the-picture-size-with-pil
+#Could also do these with cv2:  https://python-code.dev/articles/110664770  #images would be numpy arrays in this case, could be important for optimizing (if needed later)
+def getImage(inputDirectory, imageFilename):
+	image = Image.open(os.path.join(inputDirectory, imageFilename))
+	imageWidth, imageHeight = image.size
+	return image, imageWidth, imageHeight
 
 
 def drawLoop(filenamesList, inputDirectory, labels):
 	pygame.init()
 	#Clear the screen and paste the first image
         #https://gamedevacademy.org/pygame-background-image-tutorial-complete-guide/
-	label_index = 0
-	label = labels[label_index]
+	labelIndex = 0
+	label = labels[labelIndex]
 	running = True
-	while running:
-		for image in filenamesList:
-			#https://stackoverflow.com/questions/6444548/how-do-i-get-the-picture-size-with-pil
-			#Could also do these with cv2:  https://python-code.dev/articles/110664770  #images will be numpy arrays then
-			image = Image.open(os.path.join('inputDirectory', filenamesList[0]))
-			if image:
-				width, height = image.size
-				#https://stackoverflow.com/questions/4135928/pygame-display-position
-				game_dislay = pygame.display.set_mode((width, height))
-				window.fill((0, 0, 0))
+	filenamesListOffset = 0
+	imageFileName = filenamesList[filenamesListOffset]
+	image, imageWidth, imageHeight = getImage(inputDirectory, imageFileName)
+	boxes = getBoxesFromAnnotationFile(inputDirectory, imageFilename) #just in case there are already annotations for this image...
+	
+	#https://stackoverflow.com/questions/4135928/pygame-display-position
+	game_dislay = pygame.display.set_mode((imageWidth, imageHeight))
+	window.fill((0, 0, 0))
+	while running and image is not None:
+		#Just being paranoid here about possible pygame window repositions by the user
+		size = pygame.display.Info() #x, y, width, height
+		imageTopLeftX = size[0]
+		imageTopLeftY = size[1]
+		if size[2] not imageWidth:
+			print("Strange - size[2] from pygame.display.Info() is not the same as the image.size[2] (imageWidth) gotten from getImage()!! - debugging needed.")
+		imageWidth = size[2]
+		if size[3] not imageHeight:
+			print("Strange - size[3] from pygame.display.Info() is not the same as the image.size[3] (imageHeight) gotten from getImage()!! - debugging needed.")
+		imageHeight = size[3]
+		
+		boxX1 = None #tempBoxUpperLeftX
+		boxY1 = None #tempBoxUpperLeftY
+		boxX2 = None #tempBoxLowerRightX
+		boxY2 = None #tempBoxLowerRightY
 
-				thisImage = True
-				x1 = None #tempBoxUpperLeftX
-				y1 = None #tempBoxUpperLeftY
-				x2 = None #tempBoxLowerRightX
-				y2 = None #tempBoxLowerRightY
+		#First order of business is just to get the debugging / testing done for recording annotation boxes and displaying them properly over the image (and getting the images displayed)
+		#Then start iterating over images and making sure that box data is properly reflected / kept / able to be retrieved later and works.
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				running = False
 
-				while thisImage and running:
-					size = pygame.display.Info() #x, y, width, height
+			#https://stackoverflow.com/questions/10990137/pygame-mouse-clicking-detection
+			if event.type == pygame.MOUSEBUTTONDOWN:
 
-					for event in pygame.event.get():
-						if event.type == pygame.QUIT:
-							running = False
+				if event.button == 1:  # left click
+					#A backup might be:  https://stackoverflow.com/questions/25848951/python-get-mouse-x-y-position-on-click
+					if tempBoxTopLeftX == None and :
+						boxX1 = pos[0] - imageTopLeftX  #tempBoxUpperLeftX   #TODO I'm not too sure about these lines yet...plenty of debugging ahead...
+						boxY1 = pos[1] - imageTopLeftY #tempBoxUpperLeftY
+					else:
+						boxX2 = pos[0] - imageTopLeftX  #tempBoxLowerRightX
+						boxY2 = pos[1] - imageTopLeftY  #tempBoxLowerRightY
 
-						#https://stackoverflow.com/questions/10990137/pygame-mouse-clicking-detection
-						if event.type == pygame.MOUSEBUTTONDOWN:
+						box = calculateNormalizedBoxNumbers(imageWidth, imageHeight, boxX1, boxX2, boxY1, boxY2, labelIndex)
+						addAnnotationFileBox(inputDirectory, imageFilename, box)
+						boxes.append(box)
 
-							if event.button == 1:  # left click
-								pos = pygame.mouse.get_pos() # (x, y)
-								#A backup might be:  https://stackoverflow.com/questions/25848951/python-get-mouse-x-y-position-on-click
-								if tempBoxTopLeftX == None:
-									x1 = pos[0]  #tempBoxUpperLeftX
-									y1 = pos[1]  #tempBoxUpperLeftY
-								else:
-									x2 = pos[0]  #tempBoxLowerRightX
-									y2 = pos[1]  #tempBoxLowerRightY
+				#if event.button == 2:  # middle-click    #TODO:  Add this later and test/debug
+				#	removeNearestBox()
 
-									addBoxToImageAnnotationFile(x1, y1, x2, y2, label)
+				if event.button == 3:  # right-click --> clear the set box positions
+					x1, y1, x2, y2 = None
 
-							if event.button == 2:  # middle-click
-								removeNearestBox()
+				if event.button == 4:  # scroll-up
+					#Change label previous (if not already #1)
+					if label_index not 0:
+						label_index -= 1
+						label = labels(label_index)
 
-							if event.button == 3:  # right-click --> clear the set box positions
-								x1, y1, x2, y2 = None
+				if event.button == 5:  # scroll-down
+					#Change label next (if not at end)
+					if labels.len > label_index + 1:
+						label_index += 1
+						label = labels(label_index)
 
-							if event.button == 4:  # scroll-up
-								#Change label previous (if not already #1)
-								if label_index not 0:
-									label_index -= 1
-									label = labels(label_index)
+			#handle keyboard button presses:
+			if event.type == pygame
 
-							if event.button == 5:  # scroll-down
-								#Change label next (if not at end)
-								if labels.len > label_index + 1:
-									label_index += 1
-									label = labels(label_index)
-
-						if event.type == pygame
-
-						if x1 not None:
-							pos = pygame.mouse.get_pos()
-							drawBoxesOnImage()
-							drawTempBoxOnImage(x1, y1, pos[0], pos[1], label)
+				if x1 not None:
+					pos = pygame.mouse.get_pos()
+					drawBoxesOnImage()
+					drawTempBoxOnImage(x1, y1, pos[0], pos[1], label)
 
 					game.display.blit(image, (0, 0))
 					pygame.display.update()
