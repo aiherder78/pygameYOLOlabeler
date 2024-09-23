@@ -12,6 +12,14 @@ from copy import copy
 #TODO:  Make the paths completely os agnostic - currently I'm coding for *nix paths
 #https://stackoverflow.com/questions/6036129/platform-independent-file-paths
 
+#Idea:  I could make this intermittently copy already annotated image files and their annotations to a separate directory to be automatically
+#processed - to train a YOLO model, then have that model also running here (and updated as it finishes training), putting boxes of a blue color around things it thinks it recognizes
+#then you could position the mouse cursor over those and press a key to have that marked as well.
+#This would be a sort of progressive training - would help annotators to see progress and see how the model was learning in real time.
+
+#Idea2:  It would be nice to have a key you could press that would throw keybind help up on the screen using pygame fonts.
+#Then you could press escape to exit that help and go back to doing annotations.
+
 
 #1.  Get input directory from argument OR detect any images in current directory
 #2.  Put all image file names into a list (only inserting the image file types as determined by the extensions list)
