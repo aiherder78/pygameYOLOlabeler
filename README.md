@@ -5,16 +5,22 @@ I am writing this currently without LLM help (old style), so it'll be a bit slow
 
 To use:
 The easiest way I find to use this is to copy the following files into a directory (and have a movie ready that you want to annotate from):
+
 labels.txt, yourMovie.mp4, splitvid.py, pygamelabeler.py
 
 Make a python virtual environment:
+
 "/python -m venv ."
+
 Activate the virtual environment so all the installs you do will be kept there:
 "source bin/activate"  (slightly different on non-*nix operating systems)
 
 Install the dependencies needed to run the two scripts (splitvid.py & pygamelabeler.py):
+
 "pip install opencv-python"
+
 "pip install pillow"
+
 "pip install pygame"
 
 Open splitvid.py and change the name of the movie to the one you're going to use.  And the number of frames you want to extract (typically movies are something like 30 frames per second, so you may have problems if you try to extract a whole multi-hour long movie to jpg files).
