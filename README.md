@@ -1,6 +1,16 @@
 # pygameYOLOlabeler
 Uses pygame to create a simple interface to quickly put boxes on objects in images - creates annotation files for YOLO neural net training
 
-This is a work in progress (WIP).
+I am writing this currently without LLM help (old style), so it'll be a bit slower going.  As of 24 Sep 2024, I have most of the major bugs I noticed ironed out.  There may still be lurking bugs (especially in the removeBlock function chain that removes the labelling squares (I called them blocks) from memory and the annotation file.
 
-I am writing this currently without LLM help (old style), so it'll be a bit slower going.
+To use:
+The easiest way I find to use this is to copy the following files into a directory (and have a movie ready that you want to annotate from):
+labels.txt, yourMovie.mp4, splitvid.py, pygamelabeler.py
+
+Open labels.txt and make sure it has the class types (labels) you want in it.  They are comma separated.
+
+Change the splitvid.py so that it has the number of frames you want to extract, run it against your movie file.  That many .jpg image files will be generated in the directory.
+
+Finally, run pygamelabeler.py without arguments (it'll automatically use the current directory as the input directory and grab any images with the file name extensions coded in (which includes .jpg).
+
+Everything else should be automatic for you as you annotate the images using the interface window that pops up.  Any further questions, try reading the help, other comments at the top, or for in depth questions, check out the code and all the comments on that (extremely in depth questions might be answered by reading the commits).
