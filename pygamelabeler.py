@@ -133,7 +133,7 @@ def getAnnotationFileName(inputDirectory, imageFilename):
 
 #Just give me values I can work with on screen:
 def getBoxValuesFromStrings(box, imageWidth, imageHeight, labels):
-	labelIndexStr, normalizedBoxCentroidXStr, normalizedBoxCentroidYStr, normalizedBoxWidthStr, normalizedBoxHeightStr = box.slit()
+	labelIndexStr, normalizedBoxCentroidXStr, normalizedBoxCentroidYStr, normalizedBoxWidthStr, normalizedBoxHeightStr = box.split(' ')
 	label = labels[int(labelIndexStr)]
 	normalizedBoxCentroidX = float(normalizedBoxCentroidXStr)
 	normalizedBoxCentroidY = float(normalizedBoxCentroidYStr)
@@ -141,17 +141,22 @@ def getBoxValuesFromStrings(box, imageWidth, imageHeight, labels):
 	normalizedBoxHeight = float(normalizedBoxHeightStr)
 	
 	box = [label, normalizedBoxCentroidX, normalizedBoxCentroidY, normalizedBoxWidth, normalizedBoxHeight]
+	#print("Box values from strings - types: " + str(type(label)) + ", " + str(type(normalizedBoxCentroidX)) +", " + str(type(normalizedBoxCentroidY)) + "," + str(type(normalizedBoxWidth)) + ", " + str(type(normalizedBoxHeight)))
+	#print("Box values from strings - values: " + label + ", " + str(normalizedBoxCentroidX) + ", " + str(normalizedBoxCentroidY) + ", " + str(normalizedBoxWidth) + ", " + str(normalizedBoxHeight))
 	
 	return box
 
 
 def getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labels):
+	print("entering getImageBoxCoordinateFromNormalizedValues()")
 	box = getBoxValuesFromStrings(box, imageWidth, imageHeight, labels)
 	
-	normalizedBoxCenterX = box[1]
-	normalizedBoxCenterY = box[2]
-	normalizedBoxWidth = box[3]
-	normalizedBoxHeight = box[4]
+	label = box[0]
+	
+	normalizedBoxCenterX = float(box[1])
+	normalizedBoxCenterY = float(box[2])
+	normalizedBoxWidth = float(box[3])
+	normalizedBoxHeight = float(box[4])
 	
 	boxCenterX = normalizedBoxCenterX * imageWidth
 	boxCenterY = normalizedBoxCenterY * imageHeight
@@ -164,12 +169,14 @@ def getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labe
 	boxY2 = boxCenterY + (boxHeight / 2)
 	
 	boxDataForDrawing = [label, boxX1, boxY1, boxX2, boxY2]
+	print("boxDataForDrawing: " + label + ", " + str(boxX1) + ", " + str(boxY1) + ", " + str(boxX2) + ", " + str(boxY2)) 
 	
 	return boxDataForDrawing
 	
 
 #See calculateNormalizedBoxNumbers for exact formatting instructions / how to calculate them.
 def getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels):
+	print("entering getBoxesFromAnnotationFile")
 	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
 	
 	rawBoxes = []
@@ -177,20 +184,22 @@ def getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageH
 	try:
 		with open(annotationFileFullpath, "r") as annotationFile:
 			for line in annotationFile:
-				boxes.append(line.rstrip())   #append to the boxes list without the "\n" line breaks
+				rawBoxes.append(line.rstrip())   #append to the boxes list without the "\n" line breaks
 	
+		print("There are " + str(len(rawBoxes)) + " boxes in rawBoxes")
 		for box in rawBoxes:
 			boxForDrawing = getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labels)
-			boxes.append()
+			boxes.append(boxForDrawing)
 	except OSError as e:
 		print("Annotation file does not exist yet, we'll make it later: " + str(annotationFileFullpath))
 
+	print("There are " + str(len(boxes)) + " boxes in boxes")
 	return boxes
 
 
 #This converts from a box in list format to a string so it can be written to an image annotation file.
 def getBoxWriteLine(box):
-	return box[0] + " " + box[1] + " " + box[2] + " " + box[3] + " " + box[4] + "\n"
+	return str(box[0]) + " " + str(box[1]) + " " + str(box[2]) + " " + str(box[3]) + " " + str(box[4]) + "\n"
 	
 
 #In the annotation files, all the boxes (one per line) are stored in normalized format in a space delimited string (with a line break '\n' at the end).
@@ -217,7 +226,7 @@ def calculateNormalizedBoxNumbers(label, boxX1, boxY1, boxX2, boxY2, imageWidth,
 	#Class labels come from labels.txt and are zero indexed -> so if you had labels:  dog  cat, dog's labelIndex would be 0, cat's label index would be 1.
 	#Each row's format is: labelIndex normalizedBoxCenterX normalizedBoxCenterY normalizedBoxWidth normalizedBoxHeight
 	
-	box = [labelIndex, normalizedCenterX, normalizedCenterY, normalizedWidth, normalizedHeight]
+	box = [labelIndex, normalizedBoxCenterX, normalizedBoxCenterY, normalizedBoxWidth, normalizedBoxHeight]
 	
 	return box
 	
@@ -301,10 +310,28 @@ def drawBoxes(image, boxes, labels):
 #I'm going to test only progressing forward through boxes and images first, then I'll add box delete functionality
 #def removeBoxFromBoxes(label_index, x1, y1, x2, y2, imageWidth, imageHeight, imageFileName):
 	#TODO
+
+#Convenience method for drawing rectangles on a pygame surface.
+def drawRectangle(surface, lineColorToDraw, lineDrawWidth, boxX1, boxY1, boxX2, boxY2, label, myfont):
+	#pygame.draw.rect(surface or array, rgb color in format (r, g, b), (x1, y1, rectangle width, rectangle height))
+	rectangleWidth = boxX2 - boxX1
+	rectangleHeight = boxY2 - boxY1
+			
+	#print("Drawing rectangle:  (x1, y1, width, height): (" + str(mouseX) + ", " + str(mouseY) + ", " + str(rectangleWidth) + ", " + str(rectangleHeight) + ")")
+	if rectangleWidth > 0 and rectangleHeight > 0:
+		pygame.draw.rect(surface, lineColorToDraw, (boxX1, boxY1, rectangleWidth, rectangleHeight), lineDrawWidth)
+	if rectangleWidth <= 0:
+		print("rectangleWidth <= 0")
+	if rectangleHeight <= 0:
+		print("rectangleHeight <= 0")
+	
+	#TODO blit the label - do the above with lines, make the top line have enough space in between in the middle for the fonted label
+	return surface
 	
 	
 #https://stackoverflow.com/questions/6444548/how-do-i-get-the-picture-size-with-pil
 #Could also do these with cv2:  https://python-code.dev/articles/110664770  #images would be numpy arrays in this case, could be important for optimizing (if needed later)
+#(note:  the drawLoop already seems to run pretty dang fast and this isn't a super heavy app, optimization may not be at all required)
 def getImage(inputDirectory, imageFilename):
 	image = Image.open(os.path.join(inputDirectory, imageFilename))
 	imageWidth, imageHeight = image.size
@@ -315,8 +342,6 @@ def getImage(inputDirectory, imageFilename):
 #TODO:  MAJOR code cleanup here
 def drawLoop(filenamesList, inputDirectory, labels):
 	pygame.init()
-	#Clear the screen and paste the first image
-        #https://gamedevacademy.org/pygame-background-image-tutorial-complete-guide/
 	labelIndex = 0
 	label = labels[labelIndex]
 	red = (255, 0, 0)
@@ -326,28 +351,27 @@ def drawLoop(filenamesList, inputDirectory, labels):
 	image, imageWidth, imageHeight = getImage(inputDirectory, imageFilename)
 	boxes = getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels) #just in case there are already annotations for this image...
 	
-	#https://stackoverflow.com/questions/4135928/pygame-display-position
-	#imageByteBuffer = pygame.image.tobytes(imageFilename)
 	imageCleanSurface = pygame.image.load(imageFilename)
-	imageString = imageCleanSurface 
+	imageString = imageCleanSurface
 	
 	window = pygame.display.set_mode((imageWidth, imageHeight))
 	
 	window.fill((0, 0, 0))
 	myfont = pygame.font.SysFont("monospace", 10)
 	
+	rectangleLineWidth = 5
+	
 	counter = 0
 	showCount = False
-	
-			
+
 	boxX1 = None #tempBoxUpperLeftX
 	boxY1 = None #tempBoxUpperLeftY
 	boxX2 = None #tempBoxLowerRightX
 	boxY2 = None #tempBoxLowerRightY
 	while running and image is not None:
-		if showCount:
+		if showCount:		#an indicator for how fast the drawLoop while is running
 			print("Frame: " + str(counter))
-		counter += 1
+			counter += 1
 		#Just being paranoid here about possible pygame window repositions by the user
 		size = pygame.display.Info() #x, y, width, height
 		displayWidth = size.current_w
@@ -362,8 +386,6 @@ def drawLoop(filenamesList, inputDirectory, labels):
 		if displayHeight != imageHeight:
 			print("Strange - size[3] from pygame.display.Info() is not the same as the image.size[3] (imageHeight) gotten from getImage()!! - debugging needed.")
 
-
-		#First get the temp boxes displaying and this thing running with no errors on start / drawLoop getting through while clicking the first time for a temp box.
 		for event in pygame.event.get():
 		
 			if event.type == pygame.QUIT:
@@ -381,24 +403,56 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					if boxX1 is not None and boxX2 == None:
 						print("received left click X2")
 					
-						#boxX2 = pos[0] - imageTopLeftX  #tempBoxLowerRightX
-						#boxY2 = pos[1] - imageTopLeftY  #tempBoxLowerRightY
 						boxX2 = pos[0]
 						boxY2 = pos[1]
+						#Make sure that the values never get messed up by making negative rectangle widths and heights
+						#TODO:  My logic is still not correct here...probably can't do it exactly like this, though the individual X or Y values are switching out,
+						#that changes the location where the point is by switching only partial...working it out below...will need to debug too.
+						#   IV    I			Cartesian Coordinate sectors (LOL, it's been a long time since grade school...prob weren't named sectors, but oh well)
+						#   III   II
+						
+						if boxX2 > boxX1 and boxY2 < boxY1:	#1st sector.
+							#ex:	x1, y1:  0, 0
+							#	x2, y2:  5, -5
+							#new 	x1, y1:  0, -5		y1 <--> y2...no changes to x1 or x2
+							#new	x2, y2:  5, 0
+							tempY1 = boxY1
+							boxY1 = boxY2
+							boxY2 = tempY1
+						if boxY2 > boxY1 and boxX2 < boxX1:   	#3rd sector.
+							#ex:  	x1, y1:  0, 0		
+							#	x2, y2: -5, 5
+							#new	x1, y1: -5, 0		x1 <--> x2...switch x's, no change to y's.
+							#new	x2, y2:  0, 5
+							tempX1 = boxX1
+							boxX1 = boxX2
+							boxX2 = tempX1
+						if boxX2 < boxX1 and boxY2 < boxY1:   	#4th sector.
+							#ex:	x1, y1:  0, 0
+							#	x2, y2: -5, -5
+							#new	x1, y1: -5, -5		They both get switched out by the looks of it.
+							#new	x2, y2:  0, 0
+							tempX1 = boxX1
+							boxX1 = boxX2
+							boxX2 = tempX1
+							
+							tempY1 = boxY1
+							boxY1 = boxY2
+							boxY2 = tempY1						
+							
+						#Otherwise, if it's in the 2nd sector (II), that's how it would work normally without adjustments.
+						
 						rectWidth = boxX2 - boxX1
 						rectHeight = boxY2 - boxY1
 
-						#box = calculateNormalizedBoxNumbers(imageWidth, imageHeight, boxX1, boxX2, boxY1, boxY2, labelIndex)
-						#addAnnotationFileBox(inputDirectory, imageFilename, box)
-						boxList = [label, boxX1, boxY1, rectWidth, rectHeight]  #Now it's a list of lists, so more debugging down the method chain will be required
+						boxList = [label, boxX1, boxY1, boxX2, boxY2]  #Now it's a list of lists, so more debugging down the method chain will be required
+						addAnnotationFileBox(inputDirectory, imageFilename, imageWidth, imageHeight, boxList, labels)
 						boxes.append(boxList)
 						
-						boxX1, boxY1, boxX2, boxY2 = None, None, None, None
+						boxX1, boxY1, boxX2, boxY2 = None, None, None, None    #Clear out the tracking values for the next rectangle
 					
-					elif boxX1 == None:
-						
-						#boxX1 = pos[0] - imageTopLeftX  #tempBoxUpperLeftX   #TODO I'm not too sure about these lines yet...plenty of debugging ahead...
-						#boxY1 = pos[1] - imageTopLeftY #tempBoxUpperLeftY
+					elif boxX1 == None:     #If there are no tracking points when left-clicked, this sets X1, Y1 up and the draw loop starts drawing a rect to the mouse pointer
+					
 						boxX1 = pos[0]
 						boxY1 = pos[1]
 						
@@ -414,12 +468,14 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					if label_index != 0:    #You can't go back from 0.  If you see -1 in the annotation file for the class, then there's a bug.
 						label_index -= 1
 						label = labels[label_index]
+						print("Changed label to " + label)
 
 				if event.button == 5:  # scroll-down
 					#Change label next (if not at end)
 					if labels.len > label_index + 1:
 						label_index += 1
 						label = labels[label_index]
+						print("Changed label to " + label)
 
 			'''
 			#handle keyboard button presses:
@@ -430,60 +486,37 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					#null out the box value tracking points  boxX1, boxY1, boxX2, boxY2 = None, None, None, None
 			'''
 		
-		#imageCleanSurface = pygame.image.frombytes(imageByteBuffer)
-		#imageScratchSurface = pygame.image.frombytes(imageByteBuffer)
-		
 		#Do the display updates here
 		window.fill((0, 0, 0))
 		window.blit(imageCleanSurface, (0, 0))
 		
+		#Create a new surface with a copy of the original image so we don't mess that up while drawing temporary (dynamic) boxes
+		#Also, just in case we need to remove boxes, the original / clean image will be necessary for that
 		scratchimage = pygame.image.tostring(imageCleanSurface, 'RGBA')
-		
-		#scratchSurface = pygame.Surface((imageWidth, imageHeight)) # I'm going to use 100x200 in examples
 		data = pygame.image.tostring(imageCleanSurface, 'RGBA')
-		#fromstring(bytes, size, format, flipped=False) -> Surface
 		surfaceSize = imageCleanSurface.get_size()
 		scratchSurface = pygame.image.fromstring(data, surfaceSize, 'RGBA', False)
 		
-		pos = pygame.mouse.get_pos()
+		
 		#print("MouseXY " + str(pos[0]) + ", " + str(pos[1]) + ", X1 " + str(boxX1) + ", Y1 " + str(boxY1) + ", X2 " + str(boxX2) + ", Y2 " + str(boxY2))
 		#Now draw the boxes, starting with the temp box (if any) over the display
-		if boxX1 is not None and boxY1 is not None and boxX2 == None and boxY2 == None:
-			#We're not saving this image, it's just for display, we build/draw the boxes on each loop, so if we get rid of any boxes, they'll go away on next time through the loop
-			#image = drawTempBoxOnImage(image, imageWidth, imageHeight, boxX1, boxY1, label, myfont)
-			
+		if boxX1 is not None and boxY1 is not None and boxX2 == None and boxY2 == None:			
+			pos = pygame.mouse.get_pos()
 			mouseX = pos[0]
 			mouseY = pos[1]
-			
-			#pygame.draw.rect(surface or array, rgb color in format (r, g, b), (x1, y1, rectangle width, rectangle height))
-			rectangleWidth = mouseX - boxX1
-			rectangleHeight = mouseY - boxY1
-			
-			#print("Entered rectangle print block - rectangle:  (x1, y1, width, height): (" + str(mouseX) + ", " + str(mouseY) + ", " + str(rectangleWidth) + ", " + str(rectangleHeight) + ")")
-			if rectangleWidth > 0 and rectangleHeight > 0:
-				#scratchArray = pygame.surfarray.array3d(imageCleanArray)  #creates a copy of the pixel data
-				#draw a red box from the marked X, Y to the mouse cursor position (X2, Y2)
-				pygame.draw.rect(scratchSurface, red, (boxX1, boxY1, rectangleWidth, rectangleHeight), width=3)
-				#scratchSurface = pygame.surfarray.make_surface(scratchArray)
-			
-			#Note:  I need to blit the label on the top line (in the middle of the line between X1, Y1 and X2, Y1)
-			#Note:  I might need to draw my own rect line by line so that I can put the font on the top line without the line going through it (so essentially I'd have two lines
-			#for the top one)
+			scratchSurface = drawRectangle(scratchSurface, red, rectangleLineWidth, boxX1, boxY1, mouseX, mouseY, label, myfont)
 		
+		#boxList = [label, boxX1, boxY1, boxX2, boxY2]
 		if len(boxes) > 0:
-			print("Entering boxes rectangle draw")
-			#drawBoxesOnImage(image, boxes, labels)
+			#print("Entering boxes rectangle draw, there are " + str(len(boxes)) + " in boxes.")
 			for box in boxes:
-				pygame.draw.rect(scratchSurface, red, (box[1], box[2], box[3], box[4]), width=3)
-			
-			#probably going to need to make my own rectangle drawing function to take care of the labels - not to show the line through the label while having it sit on the top line
+				print(str(box[0] + ", " + str(box[1]) + ", " + str(box[2]) + ", " + str(box[3]) + ", " + str(box[4])))
+				scratchSurface = drawRectangle(scratchSurface, red, rectangleLineWidth, box[1], box[2], box[3], box[4], box[0], myfont)
+				window.blit(scratchSurface, (0, 0))
 
-		window.blit(scratchSurface, (0, 0))
-		
-		#I might put all the font blitting here after making a full list of labels with image coords for display on top of the image.
+		window.blit(scratchSurface, (0, 0))  #Only need one of these (though I'm not sure, may need separate ones for the font operations)
 		
 		pygame.display.flip()
-		#pygame.display.update()  #btw, you can pass a rectangles into this...is that the surface?  will figure it out
 
 	pygame.quit()
 
@@ -502,3 +535,25 @@ def main():
 
 if __name__ == "__main__":
 	main()
+
+'''
+#Current bug:  saving these boxes:
+star, 472, 113, 590, 282
+star, 554, 434, 705, 582
+star, 952, 254, 1342, 489
+star, 1005, 645, 1250, 826
+
+#Loads these boxes:
+star, 472.0, 446.5, 590.0, 282.0
+rectangleHeight <= 0
+star, 554.0, 555.5, 705.0, 582.0
+star, 952.0, 1029.5, 1342.0, 489.0
+rectangleHeight <= 0
+star, 1005.0, 1037.0, 1250.0, 826.0
+
+I see that the Y1 is consistently getting seriously messed up (it's getting bigger)
+
+Looks like my problem is in either normalizing the values or getting the screen coordinates from the normalized values...This will be interesting to figure out, but I'm VERY close now
+to having my save and load working.
+The display works well except for dynamic boxes in other sectors than II.
+'''
