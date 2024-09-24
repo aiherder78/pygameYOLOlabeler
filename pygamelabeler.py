@@ -305,8 +305,10 @@ def isItFlatRectangle(x1, y1, x2, y2):
 		#print("y2 - y1: " + str(y2) + " - " + str(y1) + " = " + str(y2 - y1))
 		#print("x2 - x1: " + str(x2) + " - " + str(x1) + " = " + str(x2 - x1))
 		#Absolutely NO flat rectangles - no point!  There needs to be pixels in them thar hills for YOLO to do anything with them.
+		print("failed the flat rectangle test!")
 		return True
 	elif y2 - y1 == 0 and x2 - x1 == 0:
+		print("failed the flat rectangle test!")
 		return True
 		#For those of you who love to clickity click without moving the mouse, winter's coming, lol (yes I know I don't need this one, but it's funny)
 	else:
@@ -350,14 +352,13 @@ def removeBox(x1, y1, inputDirectory,imageFilename, imageWidth, imageHeight, box
 	
 	elif len(boxMatches) == 1:
 		removeBoxFromFile(inputDirectory, imageFilename, imageWidth, imageHeight, boxMatches[0][2], labels)
-		boxes = removeBoxFromBoxesList(boxMatches[0][2], boxes)
-		return boxes
 	
 	elif len(boxMatches) > 1:
 		#If there are somehow (!!) multiple boxes with the lowest values a matching distance, proceed to test distance between each boxX1, boxY1 and x1, y1
 		#If there are twins where those distances match and are the lowest values, they are duplicate boxes and are going bye bye
 		#https://docs.python.org/3/howto/sorting.html --> operator, itemgetter -> allows for sorting by multiple elements... itemgetter
 		matches = sorted(boxMatches, key=itemgetter(0, 1)) #by default they will be ascending, starting with the lowest values...itemgetter(0) for instance references to boxMatches[0]
+		#print(matches)
 		
 		#I'm going to be lazy here - you can delete up to two at once:
 		firstMatchDistanceTopLeft = matches[0][0]
@@ -368,14 +369,12 @@ def removeBox(x1, y1, inputDirectory,imageFilename, imageWidth, imageHeight, box
 			#Sink both their battleships!  Walk the plank!
 			print("implement this never to be seen edge case")
 			removeBoxFromFile(inputDirectory, imageFilename, imageWidth, imageHeight, matches[1][2], labels)
-			boxes = removeBoxFromBoxesList(matches[1][2], boxes)
 
 		removeBoxFromFile(inputDirectory, imageFilename, imageWidth, imageHeight, matches[0][2], labels)
-		boxes = removeBoxFromBoxesList(boxMatches[0][2], boxes)
 		
-		#Now to update the boxes list in memory so the deleted boxes don't keep getting displayed
-		boxes = getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels)
-		return boxes
+	#Now to update the boxes list in memory so the deleted boxes don't keep getting displayed
+	boxes = getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels)
+	return boxes
 
 #Make sure that the values never get messed up by making negative rectangle widths and heights
 def adjustXYvalues(boxX1, boxY1, boxX2, boxY2):
@@ -464,6 +463,7 @@ def prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, 
 	
 	return imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, window, None, None, None, None
 
+
 #TODO:  Make this method much smaller later, once it's working, refactor out the draw stuff again
 #TODO:  MAJOR code cleanup here
 def drawLoop(filenamesList, inputDirectory, labels):
@@ -528,8 +528,6 @@ def drawLoop(filenamesList, inputDirectory, labels):
 							boxes.append(boxList)
 						
 							boxX1, boxY1, boxX2, boxY2 = None, None, None, None    #Clear out the tracking values for the next rectangle
-						#else:
-						#	print("failed isFlatRectangle test")
 					
 					elif boxX1 == None:     #If there are no tracking points when left-clicked, this sets X1, Y1 up and the draw loop starts drawing a rect to the mouse pointer
 						#print("Received left click: " + str(pos[0]) + ", " + str(pos[1]))
@@ -575,7 +573,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 				if event.key == pygame.K_d:
 					pos = pygame.mouse.get_pos()
 					#Now we're going headhunting for a box to eliminate
-					removeBox(pos[0], pos[1], inputDirectory, imageFilename, imageWidth, imageHeight, boxes, labels)
+					boxes = removeBox(pos[0], pos[1], inputDirectory, imageFilename, imageWidth, imageHeight, boxes, labels)
 		
 		
 		#Do the display updates here
@@ -610,6 +608,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 		pygame.display.flip()
 
 	pygame.quit()
+	
 
 def main():
 	inputDirectory = Path(getInputDirectory())
