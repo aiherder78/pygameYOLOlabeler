@@ -311,6 +311,45 @@ def drawBoxes(image, boxes, labels):
 #def removeBoxFromBoxes(label_index, x1, y1, x2, y2, imageWidth, imageHeight, imageFileName):
 	#TODO
 
+
+#Make sure that the values never get messed up by making negative rectangle widths and heights
+def adjustXYvalues(boxX1, boxY1, boxX2, boxY2):
+	#   IV    I			Cartesian Coordinate system
+	#   III   II
+	
+	if boxX2 > boxX1 and boxY2 < boxY1:	#1st sector.
+		#ex:	x1, y1:  0, 0
+		#	x2, y2:  5, -5
+		#new 	x1, y1:  0, -5		y1 <--> y2...no changes to x1 or x2
+		#new	x2, y2:  5, 0
+		tempY1 = boxY1
+		boxY1 = boxY2
+		boxY2 = tempY1
+	if boxY2 > boxY1 and boxX2 < boxX1:   	#3rd sector.
+		#ex:  	x1, y1:  0, 0		
+		#	x2, y2: -5, 5
+		#new	x1, y1: -5, 0		x1 <--> x2...switch x's, no change to y's.
+		#new	x2, y2:  0, 5
+		tempX1 = boxX1
+		boxX1 = boxX2
+		boxX2 = tempX1
+	if boxX2 < boxX1 and boxY2 < boxY1:   	#4th sector.
+		#ex:	x1, y1:  0, 0
+		#	x2, y2: -5, -5
+		#new	x1, y1: -5, -5		They both get switched out by the looks of it.
+		#new	x2, y2:  0, 0
+		tempX1 = boxX1
+		boxX1 = boxX2
+		boxX2 = tempX1
+	#Otherwise, if it's in the 2nd sector (II), that's how it would work normally without adjustments.
+		
+		tempY1 = boxY1
+		boxY1 = boxY2
+		boxY2 = tempY1
+	
+	return boxX1, boxY1, boxX2, boxY2
+
+
 #Convenience method for drawing rectangles on a pygame surface.
 def drawRectangle(surface, lineColorToDraw, lineDrawWidth, boxX1, boxY1, boxX2, boxY2, label, myfont):
 	#pygame.draw.rect(surface or array, rgb color in format (r, g, b), (x1, y1, rectangle width, rectangle height))
@@ -405,42 +444,9 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					
 						boxX2 = pos[0]
 						boxY2 = pos[1]
-						#Make sure that the values never get messed up by making negative rectangle widths and heights
-						#TODO:  My logic is still not correct here...probably can't do it exactly like this, though the individual X or Y values are switching out,
-						#that changes the location where the point is by switching only partial...working it out below...will need to debug too.
-						#   IV    I			Cartesian Coordinate sectors (LOL, it's been a long time since grade school...prob weren't named sectors, but oh well)
-						#   III   II
 						
-						if boxX2 > boxX1 and boxY2 < boxY1:	#1st sector.
-							#ex:	x1, y1:  0, 0
-							#	x2, y2:  5, -5
-							#new 	x1, y1:  0, -5		y1 <--> y2...no changes to x1 or x2
-							#new	x2, y2:  5, 0
-							tempY1 = boxY1
-							boxY1 = boxY2
-							boxY2 = tempY1
-						if boxY2 > boxY1 and boxX2 < boxX1:   	#3rd sector.
-							#ex:  	x1, y1:  0, 0		
-							#	x2, y2: -5, 5
-							#new	x1, y1: -5, 0		x1 <--> x2...switch x's, no change to y's.
-							#new	x2, y2:  0, 5
-							tempX1 = boxX1
-							boxX1 = boxX2
-							boxX2 = tempX1
-						if boxX2 < boxX1 and boxY2 < boxY1:   	#4th sector.
-							#ex:	x1, y1:  0, 0
-							#	x2, y2: -5, -5
-							#new	x1, y1: -5, -5		They both get switched out by the looks of it.
-							#new	x2, y2:  0, 0
-							tempX1 = boxX1
-							boxX1 = boxX2
-							boxX2 = tempX1
-							
-							tempY1 = boxY1
-							boxY1 = boxY2
-							boxY2 = tempY1						
-							
-						#Otherwise, if it's in the 2nd sector (II), that's how it would work normally without adjustments.
+						#Adjusts for box tracking values when the mouse cursor goes in different directions
+						boxX1, boxY1, boxX2, boxY2 = adjustXYvalues(boxX1, boxY1, boxX2, boxY2)
 						
 						rectWidth = boxX2 - boxX1
 						rectHeight = boxY2 - boxY1
@@ -502,9 +508,12 @@ def drawLoop(filenamesList, inputDirectory, labels):
 		#Now draw the boxes, starting with the temp box (if any) over the display
 		if boxX1 is not None and boxY1 is not None and boxX2 == None and boxY2 == None:			
 			pos = pygame.mouse.get_pos()
+			tempX1 = boxX1
+			tempY1 = boxY1
 			mouseX = pos[0]
 			mouseY = pos[1]
-			scratchSurface = drawRectangle(scratchSurface, red, rectangleLineWidth, boxX1, boxY1, mouseX, mouseY, label, myfont)
+			tempX1, tempY1, mouseX, mouseY = adjustXYvalues(tempX1, tempY1, mouseX, mouseY)
+			scratchSurface = drawRectangle(scratchSurface, red, rectangleLineWidth, tempX1, tempY1, mouseX, mouseY, label, myfont)
 		
 		#boxList = [label, boxX1, boxY1, boxX2, boxY2]
 		if len(boxes) > 0:
@@ -535,25 +544,3 @@ def main():
 
 if __name__ == "__main__":
 	main()
-
-'''
-#Current bug:  saving these boxes:
-star, 472, 113, 590, 282
-star, 554, 434, 705, 582
-star, 952, 254, 1342, 489
-star, 1005, 645, 1250, 826
-
-#Loads these boxes:
-star, 472.0, 446.5, 590.0, 282.0
-rectangleHeight <= 0
-star, 554.0, 555.5, 705.0, 582.0
-star, 952.0, 1029.5, 1342.0, 489.0
-rectangleHeight <= 0
-star, 1005.0, 1037.0, 1250.0, 826.0
-
-I see that the Y1 is consistently getting seriously messed up (it's getting bigger)
-
-Looks like my problem is in either normalizing the values or getting the screen coordinates from the normalized values...This will be interesting to figure out, but I'm VERY close now
-to having my save and load working.
-The display works well except for dynamic boxes in other sectors than II.
-'''
