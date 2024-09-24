@@ -160,6 +160,9 @@ def getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labe
 	normalizedBoxWidth = float(box[3])
 	normalizedBoxHeight = float(box[4])
 	
+	#I think that it's possible for me to end up in a kind of bug loop where I reduce precision yet I still get different results when recalculating this (different for a string comparison)
+	#Therefore, I'm going to have to do a almost equal comparison by value when trying to find matches in the file for potential box removal later.
+	#The comparison will have to take into account precision and be almost equal by some percentage of total precision...
 	boxCenterX = normalizedBoxCenterX * imageWidth
 	boxCenterY = normalizedBoxCenterY * imageHeight
 	boxWidth = normalizedBoxWidth * imageWidth
@@ -215,7 +218,7 @@ def setRawBoxesToAnnotationFile(inputDirectory, imageFilename, imageWidth, image
 	#print("in setRawBoxesToAnnotationFile()")
 	print("In setRawBoxesToAnnotationFile - new boxes:")
 	for line in boxLines:
-		print(line)
+		print(line.rstrip())
 	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
 	
 	with open(annotationFileFullpath, "w") as annotationFile:
@@ -238,7 +241,7 @@ def calculateNormalizedBoxNumbers(label, boxX1, boxY1, boxX2, boxY2, imageWidth,
 	#Box coordinates must be normalized by the dimensions of the image (i.e. have values between 0 and 1)
 	normalizedBoxCenterX = boxCenterX / imageWidth
 	normalizedBoxCenterY = boxCenterY / imageHeight
-	normalizedBoxWidth = boxWidth / imageWidth
+	normalizedBoxWidth = boxWidth / imageWidth	#My laptop screen is much wider than it is tall, must be why the precision can get so high here when uncontrolled...I'm going to limit it
 	normalizedBoxHeight = boxHeight / imageHeight
 	#https://blog.paperspace.com/train-yolov5-custom-data/
 	#All of these values must be normalized, which we just calculated above
@@ -271,23 +274,47 @@ def addAnnotationFileBox(inputDirectory, imageFilename, imageWidth, imageHeight,
 		annotationFile.write(line)
 
 
+#Introduced fix for the precision not matching between storing and retrieving the normalized values (where retrieving is defined by changing normalized values back to screen coords):
+#See https://note.nkmk.me/en/python-math-isclose/  notes on rel-tol
+#print(math.isclose(1, 1.001, rel_tol=0.01))
 def removeBoxFromFile(inputDirectory, imageFilename, imageWidth, imageHeight, box, labels):
 	#Convert the box to normalized data
 	#Get the annotation file, copy all the data, iterate through all the lines, remove the line that matches the normalized box data line and exit
-	print("in removeBoxFromFile")
+	#print("in removeBoxFromFile")
 	normalizedBox = calculateNormalizedBoxNumbers(box[0], box[1], box[2], box[3], box[4], imageWidth, imageHeight, labels)
 	rawBox = getBoxWriteLine(normalizedBox)
 	rawBoxes = getRawBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight)
 	
 	boxLines = []
-	print("box to match for deletion:")
+	print("Scanning file:  box to match for deletion:")
 	print(rawBox + "\n")
+	
 	for boxLine in rawBoxes:
-		if boxLine + "\n" != rawBox:
+		normalizedBoxFromFile = boxLine.split(' ')
+		
+		#Step through the two boxes comparing the rows:
+		if normalizedBoxFromFile[0] != str(normalizedBox[0]):
+			print("Not matched - label is different: " + boxLine)
 			boxLines.append(boxLine + "\n")
-			print("Not matched: " + boxLine + "\n")
-		else:
-			print("Matched: " + boxLine + "\n")
+			continue #Labels don't match, skip the rest of the comparisons for this box in the file
+		if not math.isclose(float(normalizedBoxFromFile[1]), float(normalizedBox[1]), rel_tol=0.00001):
+			print("Not matched - centroidX is different: " + boxLine)
+			boxLines.append(boxLine + "\n")
+			continue
+		if not math.isclose(float(normalizedBoxFromFile[2]), float(normalizedBox[2]), rel_tol=0.00001):
+			print("Not matched - centroidY is different: " + boxLine)
+			boxLines.append(boxLine + "\n")
+			continue
+		if not math.isclose(float(normalizedBoxFromFile[3]), float(normalizedBox[3]), rel_tol=0.00001):
+			print("Not matched - normalizedWidth is different: " + boxLine)
+			boxLines.append(boxLine + "\n")
+			continue
+		if not math.isclose(float(normalizedBoxFromFile[4]), float(normalizedBox[4]), rel_tol=0.00001):
+			print("Not matched - normalizedHeight is different: " + boxLine)
+			boxLines.append(boxLine + "\n")
+			continue
+			
+		print("Matched: " + boxLine + "\n")
 	
 	setRawBoxesToAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, boxLines)
 	
@@ -353,16 +380,15 @@ def removeBox(x1, y1, inputDirectory,imageFilename, imageWidth, imageHeight, box
 			distanceToBottomRightCorner = calculateDistanceBetweenPoints(x1, y1, box[3], box[4])
 			boxMatch = [distanceToTopLeftCorner, distanceToBottomRightCorner, box]
 			boxMatches.append(boxMatch)
-		else:
-			print("There are no points inside any boxes")
 	
-	print("There are " + str(len(boxMatches)) + " boxMatches!")
+	print("Attempting to find boxes for removal:  There are " + str(len(boxMatches)) + " boxMatches!")
 	
 	if len(boxMatches) == 0:
 		print("No box found to delete - press 'd' with the mouse cursor inside a box to delete it")
 		return boxes
 	
 	elif len(boxMatches) == 1:
+		print("Sending this box for deletion (screen coords): " + boxMatches[0][2][0] + ", " + str(boxMatches[0][2][1]) + ", " + str(boxMatches[0][2][2]) + ", " + str(boxMatches[0][2][3]) + ", " + str(boxMatches[0][2][4]))
 		removeBoxFromFile(inputDirectory, imageFilename, imageWidth, imageHeight, boxMatches[0][2], labels)
 	
 	elif len(boxMatches) > 1:
@@ -370,6 +396,10 @@ def removeBox(x1, y1, inputDirectory,imageFilename, imageWidth, imageHeight, box
 		#If there are twins where those distances match and are the lowest values, they are duplicate boxes and are going bye bye
 		#https://docs.python.org/3/howto/sorting.html --> operator, itemgetter -> allows for sorting by multiple elements... itemgetter
 		matches = sorted(boxMatches, key=itemgetter(0, 1)) #by default they will be ascending, starting with the lowest values...itemgetter(0) for instance references to boxMatches[0]
+		print("Sorted matches: mouse distance to topleft, mouse distance to bottomright, label, boxX1, boxY1, boxX2, boxY2") 
+		#print("A match has " + str(len(matches[0])) + " elements")
+		for match in matches:
+			print("Matched XY (" + str(x1) + ", " + str(y1) + "): " + str(match[2][0]) + ", " + str(match[2][1]) + ", " + str(match[2][2]) + ", " + str(match[2][3]) + ", " + str(match[2][4]))
 		#print(matches)
 		
 		#I'm going to be lazy here - you can delete up to two at once:
