@@ -136,7 +136,7 @@ def getAnnotationFileName(inputDirectory, imageFilename):
 
 #Just give me values I can work with on screen:
 def getBoxValuesFromStrings(box, imageWidth, imageHeight, labels):
-	print(box)
+	#print(box)
 	labelIndexStr, normalizedBoxCentroidXStr, normalizedBoxCentroidYStr, normalizedBoxWidthStr, normalizedBoxHeightStr = box.split(' ')
 	label = labels[int(labelIndexStr)]
 	normalizedBoxCentroidX = float(normalizedBoxCentroidXStr)
@@ -213,6 +213,9 @@ def getBoxWriteLine(box):
 	
 def setRawBoxesToAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, boxLines):
 	#print("in setRawBoxesToAnnotationFile()")
+	print("In setRawBoxesToAnnotationFile - new boxes:")
+	for line in boxLines:
+		print(line)
 	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
 	
 	with open(annotationFileFullpath, "w") as annotationFile:
@@ -258,6 +261,8 @@ def setAnnotationFileBoxes(inputDirectory, imageFilename, imageWidth, imageHeigh
 			annotationFile.write(line)
 
 
+#TODO:  There's a "bug" where this function is getting / storing float values with higher precision than I'm getting later
+#when retrieving the boxes from file.  This results in the removeBox function chain not properly matching the floats with each other when they should be exactly equal...
 def addAnnotationFileBox(inputDirectory, imageFilename, imageWidth, imageHeight, box, labels):
 	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
 	box = calculateNormalizedBoxNumbers(box[0], box[1], box[2], box[3], box[4], imageWidth, imageHeight, labels)
@@ -269,15 +274,20 @@ def addAnnotationFileBox(inputDirectory, imageFilename, imageWidth, imageHeight,
 def removeBoxFromFile(inputDirectory, imageFilename, imageWidth, imageHeight, box, labels):
 	#Convert the box to normalized data
 	#Get the annotation file, copy all the data, iterate through all the lines, remove the line that matches the normalized box data line and exit
-	#print("in removeBoxFromFile")
+	print("in removeBoxFromFile")
 	normalizedBox = calculateNormalizedBoxNumbers(box[0], box[1], box[2], box[3], box[4], imageWidth, imageHeight, labels)
 	rawBox = getBoxWriteLine(normalizedBox)
 	rawBoxes = getRawBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight)
 	
 	boxLines = []
+	print("box to match for deletion:")
+	print(rawBox + "\n")
 	for boxLine in rawBoxes:
 		if boxLine + "\n" != rawBox:
 			boxLines.append(boxLine + "\n")
+			print("Not matched: " + boxLine + "\n")
+		else:
+			print("Matched: " + boxLine + "\n")
 	
 	setRawBoxesToAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, boxLines)
 	
@@ -343,6 +353,8 @@ def removeBox(x1, y1, inputDirectory,imageFilename, imageWidth, imageHeight, box
 			distanceToBottomRightCorner = calculateDistanceBetweenPoints(x1, y1, box[3], box[4])
 			boxMatch = [distanceToTopLeftCorner, distanceToBottomRightCorner, box]
 			boxMatches.append(boxMatch)
+		else:
+			print("There are no points inside any boxes")
 	
 	print("There are " + str(len(boxMatches)) + " boxMatches!")
 	
