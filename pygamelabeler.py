@@ -148,7 +148,7 @@ def getBoxValuesFromStrings(box, imageWidth, imageHeight, labels):
 
 
 def getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labels):
-	print("entering getImageBoxCoordinateFromNormalizedValues()")
+	#print("entering getImageBoxCoordinateFromNormalizedValues()")
 	box = getBoxValuesFromStrings(box, imageWidth, imageHeight, labels)
 	
 	label = box[0]
@@ -169,14 +169,14 @@ def getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labe
 	boxY2 = boxCenterY + (boxHeight / 2)
 	
 	boxDataForDrawing = [label, boxX1, boxY1, boxX2, boxY2]
-	print("boxDataForDrawing: " + label + ", " + str(boxX1) + ", " + str(boxY1) + ", " + str(boxX2) + ", " + str(boxY2)) 
+	#print("boxDataForDrawing: " + label + ", " + str(boxX1) + ", " + str(boxY1) + ", " + str(boxX2) + ", " + str(boxY2)) 
 	
 	return boxDataForDrawing
 	
 
 #See calculateNormalizedBoxNumbers for exact formatting instructions / how to calculate them.
 def getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels):
-	print("entering getBoxesFromAnnotationFile")
+	#print("entering getBoxesFromAnnotationFile")
 	annotationFileFullpath = getAnnotationFileName(inputDirectory, imageFilename)
 	
 	rawBoxes = []
@@ -186,14 +186,14 @@ def getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageH
 			for line in annotationFile:
 				rawBoxes.append(line.rstrip())   #append to the boxes list without the "\n" line breaks
 	
-		print("There are " + str(len(rawBoxes)) + " boxes in rawBoxes")
+		#print("There are " + str(len(rawBoxes)) + " boxes in rawBoxes")
 		for box in rawBoxes:
 			boxForDrawing = getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labels)
 			boxes.append(boxForDrawing)
 	except OSError as e:
 		print("Annotation file does not exist yet, we'll make it later: " + str(annotationFileFullpath))
 
-	print("There are " + str(len(boxes)) + " boxes in boxes")
+	#print("There are " + str(len(boxes)) + " boxes in boxes")
 	return boxes
 
 
@@ -249,68 +249,46 @@ def addAnnotationFileBox(inputDirectory, imageFilename, imageWidth, imageHeight,
 		annotationFile.write(line)
 
 
-#I'm just going to put the draw method stuff in the main loop for now, hopefully I can keep it simple.
-#def drawBoxOnWindow(label, x1, y1, x2, y2, myfont):
-	# Draw the boxes and put the label on its top line in a font
-	#https://stackoverflow.com/questions/10077644/how-to-display-text-with-font-and-color-using-pygame
-	#https://www.geeksforgeeks.org/pygame-drawing-objects-and-shapes/
-	
-	#keep the image object as a reference, do a full window fill every time, and always write the image to the display, then boxes, then tempbox every time
-	#pygame.draw.rect(window, (0, 0, 255), 			#well....that was easy...bet the fonts won't be nearly as easy when doing a bunch of them
-        #         [x1, y1, x2, y2], 2)  #the last number is the thickness of the rectangle lines
-        #Note, keeping this method for reference, though I'm putting it in the drawloop directly for now.  If I end up making icons or anything like that, I'll need to do something more complex.
-        #I probably won't, the whole reason for making this was to have a lower level tool that's much simpler / more rugged.
-        
-        #https://stackoverflow.com/questions/25149892/how-to-get-the-width-of-text-using-pygame
-        #text_width, text_height = self.font.size("txt")
-        #textWidth, textHeight = myfont(label)
-        #screen.blit(my_text, displayX, displayY)  #will put the font in starting at displayX, displayY
+def isPointInsideBox(x1, y1, boxX1, boxX2, boxY1, boxY2):
+	#TODO
+	#If return will be True, return True and distance between X1, Y1 and boxX1, boxY2, and if any of the values in r2 = x2 + y2 would be zero, just do the math along the line
+	#Also, if they manage to hit a boxX1, boxY1 right on the pixel, that will be True, 0  (bullseye, the box is toast)
+	#Otherwise return False, -1
+	return False, -1
 
-
-#This is entirely so that box lines will follow the mouse cursor / be visible between your first left-click and second left-click when creating a box.
-#Remember, right-click to cancel box creation (before left-clicking the second time)
-#def drawTempBoxOnImage(image, imageWidth, imageHeight, x1, y1, label, myfont):
-	#image = drawBoxesOnImage(image, imageWidth, imageHeight, labels)  #going to move this call to the drawloop for now
-	
-	#Now draw a single temp box based on where the mouse cursor is:
-	#https://www.pygame.org/docs/ref/mouse.html#pygame.mouse.get_pos
-	#x2, y2 = pygame.mouse.get_pos() #get the mouse cursor position for the next step
-	
-	#I always want the x1 and y1 to be the upper left corner, so if order is switched, put them in the right order
-	#Hmmm...if I click for the first time then go up and left, I'm messing up my drawloop variables...might need to think about this one...
-	#TODO:  make it dynamically update order as the mouse position dictates ordering (for later...let's keep this simple)
-	'''
-	if x1 > x2:
-		x1temp = x1
-		x1 = x2
-		x2 = x1temp
-	if y1 < y2:
-		y1temp = y1
-		y1 = y2
-		y2 = y1temp
-	'''
-	
-	#drawBoxOnWindow(label, x1, y1, x2, y2, myfont)
-
-
-#TODO:  I'll get this working later once I get the temp box displaying
-#I'm not sure how I'm going to do so many label fonts yet - I'll probably need a separate list to keep track with positions, then
-#blit them all to the screen at once since pygame doesn't blit to image files as far as I know and I want to keep the image files themselves clean anyway.
-'''
-def drawBoxes(image, boxes, labels):
-	imageWidth, imageHeight = image.size
-	for box in boxes:
-		labelIndex = box[0]
-		label = labels[labelIndex]
-		image = drawBoxOnImage(drawBox[1], drawBox[2], drawBox[3], drawBox[4], label)
-	return image
-'''
-	
+def calculateDistanceBetweenPoints(x1, y1, x2, y2):
+	#TODO
+	print("implement calculateDistanceBetweenPoints()")
 
 #I'm going to test only progressing forward through boxes and images first, then I'll add box delete functionality
-#def removeBoxFromBoxes(label_index, x1, y1, x2, y2, imageWidth, imageHeight, imageFileName):
+def removeBox(x1, y1, boxes, image, imageWidth, imageHeight, imageFileName):
 	#TODO
-
+	print("In removeBox")
+	#Find the boxes where boxX1 <= x1 and boxX2 >= x1 and boxY1 <= y1 and boxY2 >= y1
+	#If there are multiple boxes (you can be "inside multiples"), find the box where the boxX1 & boxY1 are the closest to x1, y1.
+	#	Remove that box.
+	boxMatches = []
+	for box in boxes:
+		test = isPointInBox(x1, y1, box[1], box[2], box[3], box[4])
+		if  test[0] != False and text[1] != -1:
+			boxMatches.append(box)
+	
+	if len(boxMatches) == 0:
+		print("No box found to delete - press 'd' with the mouse cursor inside a box to delete it")
+		return
+	
+	elif len(boxMatches) == 1:
+		#TODO: implement this
+		#Convert the box to normalized data
+		#Get the annotation file, copy all the data, iterate through all the lines, remove the line that matches the normalized box data line and exit
+		print("implement removeBox's box delete")
+		return
+	
+	elif len(boxMatches) > 1:
+		#If there are somehow (!!) multiple boxes with the lowest values a matching distance, proceed to test distance between each boxX1, boxY1 and x1, y1
+		#If there are twins where those distances match and are the lowest values, they are duplicate boxes and are going bye bye
+		print("implement removeBox's final deconfliction code")
+		return
 
 #Make sure that the values never get messed up by making negative rectangle widths and heights
 def adjustXYvalues(boxX1, boxY1, boxX2, boxY2):
@@ -377,36 +355,46 @@ def getImage(inputDirectory, imageFilename):
 	return image, imageWidth, imageHeight
 
 
+def prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, labelIndex):
+	boxes = []
+	image, imageWidth, imageHeight = None, None, None
+	
+	if len(filenamesList) > filenamesListOffset:
+		imageFilename = filenamesList[filenamesListOffset]
+		image, imageWidth, imageHeight = getImage(inputDirectory, imageFilename)
+	else:
+		print("You've finished annotating all your available images, exiting.")
+		exit()
+		
+	boxes = getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels) #just in case there are already annotations for this image...
+	imageCleanSurface = pygame.image.load(imageFilename)
+	
+	window = pygame.display.set_mode((imageWidth, imageHeight))
+	window.fill((0, 0, 0))
+	
+	label = labels[labelIndex]
+	pygame.display.set_caption('Pygame labeler. Current label: ' + label + ", image: " + imageFilename)
+	
+	return imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, window, None, None, None, None
+
 #TODO:  Make this method much smaller later, once it's working, refactor out the draw stuff again
 #TODO:  MAJOR code cleanup here
 def drawLoop(filenamesList, inputDirectory, labels):
 	pygame.init()
-	labelIndex = 0
-	label = labels[labelIndex]
+	
 	red = (255, 0, 0)
-	running = True
-	filenamesListOffset = 0
-	imageFilename = filenamesList[filenamesListOffset]
-	image, imageWidth, imageHeight = getImage(inputDirectory, imageFilename)
-	boxes = getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels) #just in case there are already annotations for this image...
-	
-	imageCleanSurface = pygame.image.load(imageFilename)
-	imageString = imageCleanSurface
-	
-	window = pygame.display.set_mode((imageWidth, imageHeight))
-	
-	window.fill((0, 0, 0))
+	rectangleLineWidth = 5
 	myfont = pygame.font.SysFont("monospace", 10)
 	
-	rectangleLineWidth = 5
-	
+	running = True
+	filenamesListOffset = 0
+	labelIndex = 0
+	label = labels[labelIndex]
 	counter = 0
 	showCount = False
+	
+	imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, window, boxX1, boxY1, boxX2, boxY2 = prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, labelIndex)
 
-	boxX1 = None #tempBoxUpperLeftX
-	boxY1 = None #tempBoxUpperLeftY
-	boxX2 = None #tempBoxLowerRightX
-	boxY2 = None #tempBoxLowerRightY
 	while running and image is not None:
 		if showCount:		#an indicator for how fast the drawLoop while is running
 			print("Frame: " + str(counter))
@@ -432,15 +420,15 @@ def drawLoop(filenamesList, inputDirectory, labels):
 
 			#https://stackoverflow.com/questions/10990137/pygame-mouse-clicking-detection
 			if event.type == pygame.MOUSEBUTTONDOWN and pygame.mouse.get_focused():
-				print("received mouse click")
+				#print("received mouse click")
 			
 				if event.button == 1:  # left click
 				
 					pos = pygame.mouse.get_pos()
-					print("Received left click: " + str(pos[0]) + ", " + str(pos[1]))
+					#print("Received left click: " + str(pos[0]) + ", " + str(pos[1]))
 						
 					if boxX1 is not None and boxX2 == None:
-						print("received left click X2")
+						#print("received left click X2")
 					
 						boxX2 = pos[0]
 						boxY2 = pos[1]
@@ -471,26 +459,42 @@ def drawLoop(filenamesList, inputDirectory, labels):
 
 				if event.button == 4:  # scroll-up
 					#Change label previous (if not already #1)
-					if label_index != 0:    #You can't go back from 0.  If you see -1 in the annotation file for the class, then there's a bug.
-						label_index -= 1
-						label = labels[label_index]
-						print("Changed label to " + label)
+					if labelIndex != 0:    #You can't go back from 0.  If you see -1 in the annotation file for the class, then there's a bug.
+						labelIndex -= 1
+						label = labels[labelIndex]
+						pygame.display.set_caption('Pygame labeler. Current label: ' + label + ", image: " + imageFilename)
+						print("Changed label to " + label + ", label index: " + str(labelIndex))
+					else:
+						print("You can't go back in labels any more, you are at the first one.")
 
 				if event.button == 5:  # scroll-down
 					#Change label next (if not at end)
-					if labels.len > label_index + 1:
-						label_index += 1
-						label = labels[label_index]
-						print("Changed label to " + label)
+					if len(labels) > labelIndex + 1:
+						labelIndex += 1
+						label = labels[labelIndex]
+						pygame.display.set_caption('Pygame labeler. Current label: ' + label + ", image: " + imageFilename)
+						print("Changed label to " + label + ", label index: " + str(labelIndex))
+					else:
+						print("You cannot go forward through labels any more, you are at the last one.")
 
-			'''
 			#handle keyboard button presses:
-			if event.type == pygame.   --> if 's' is presed
-				#first thing to handle here is 's' - save all the boxes to image annotation file, then load the next image
-					#boxes = []
-					#get and initialize a new image and imageCleanSurface
-					#null out the box value tracking points  boxX1, boxY1, boxX2, boxY2 = None, None, None, None
-			'''
+			if event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_q:
+					print("Goodbye!")
+					exit("q key pressed, quitting.")
+				if event.key == pygame.K_s:
+					#Set the pygame display, imageCleanSurface, and scratchSurface
+					#It may be that if the image file sizes change, I will have to deinitialize pygame and reinitialize in order to get the display set correctly...
+					print("implement s key functionality")
+					#Get the boxes from the file
+					#Get the next file in the filenameList
+					filenamesListOffset += 1
+					imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, window, boxX1, boxY1, boxX2, boxY2 = prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, labelIndex)
+					
+				if event.key == pygame.K_d:
+					pos = pygame.mouse.get_pos()
+					#Now we're going headhunting for a box to eliminate
+					
 		
 		#Do the display updates here
 		window.fill((0, 0, 0))
@@ -498,14 +502,14 @@ def drawLoop(filenamesList, inputDirectory, labels):
 		
 		#Create a new surface with a copy of the original image so we don't mess that up while drawing temporary (dynamic) boxes
 		#Also, just in case we need to remove boxes, the original / clean image will be necessary for that
-		scratchimage = pygame.image.tostring(imageCleanSurface, 'RGBA')
-		data = pygame.image.tostring(imageCleanSurface, 'RGBA')
-		surfaceSize = imageCleanSurface.get_size()
-		scratchSurface = pygame.image.fromstring(data, surfaceSize, 'RGBA', False)
 		
+		#data = pygame.image.tostring(imageCleanSurface, 'RGBA')
+		scratchimage = pygame.image.tostring(imageCleanSurface, 'RGBA')
+		surfaceSize = imageCleanSurface.get_size()
+		scratchSurface = pygame.image.fromstring(scratchimage, surfaceSize, 'RGBA', False)
 		
 		#print("MouseXY " + str(pos[0]) + ", " + str(pos[1]) + ", X1 " + str(boxX1) + ", Y1 " + str(boxY1) + ", X2 " + str(boxX2) + ", Y2 " + str(boxY2))
-		#Now draw the boxes, starting with the temp box (if any) over the display
+		#Draw the dynamic box lines (to show the user where a box will be placed once they left-click once and before they left-click again to place it.
 		if boxX1 is not None and boxY1 is not None and boxX2 == None and boxY2 == None:			
 			pos = pygame.mouse.get_pos()
 			tempX1 = boxX1
@@ -519,7 +523,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 		if len(boxes) > 0:
 			#print("Entering boxes rectangle draw, there are " + str(len(boxes)) + " in boxes.")
 			for box in boxes:
-				print(str(box[0] + ", " + str(box[1]) + ", " + str(box[2]) + ", " + str(box[3]) + ", " + str(box[4])))
+				#print(str(box[0] + ", " + str(box[1]) + ", " + str(box[2]) + ", " + str(box[3]) + ", " + str(box[4])))
 				scratchSurface = drawRectangle(scratchSurface, red, rectangleLineWidth, box[1], box[2], box[3], box[4], box[0], myfont)
 				window.blit(scratchSurface, (0, 0))
 
