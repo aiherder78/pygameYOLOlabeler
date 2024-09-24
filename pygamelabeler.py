@@ -164,8 +164,8 @@ def getImageBoxCoordinateFromNormalizedValues(box, imageWidth, imageHeight, labe
 	boxHeight = normalizedBoxHeight * imageHeight
 	
 	boxX1 = boxCenterX - (boxWidth / 2)
-	boxY1 = boxCenterX - (boxHeight / 2)
-	boxX2 = boxCenterX + (boxWidth / 2)
+	boxY1 = boxCenterY - (boxHeight / 2)  #Gotcha!  Stomp bug smash!
+	boxX2 = boxCenterX + (boxWidth / 2)  
 	boxY2 = boxCenterY + (boxHeight / 2)
 	
 	boxDataForDrawing = [label, boxX1, boxY1, boxX2, boxY2]
