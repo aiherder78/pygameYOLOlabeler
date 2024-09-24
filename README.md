@@ -1,5 +1,5 @@
 # pygameYOLOlabeler
-Uses pygame to create a simple interface to quickly put boxes on objects in images - creates annotation files for YOLO neural net training
+Uses pygame to create a simple interface to quickly put boxes on objects in images - creates annotation files for YOLO neural net training (the boxes on images do not modify the original image files, they are stored in annotation files).
 
 I am writing this currently without LLM help (old style), so it'll be a bit slower going.  As of 24 Sep 2024, I have most of the major bugs I noticed ironed out.  There may still be lurking bugs (especially in the removeBlock function chain that removes the labelling squares (I called them blocks) from memory and the annotation file.
 
