@@ -17,13 +17,10 @@ Activate the virtual environment so all the installs you do will be kept there:
 
 Install the dependencies needed to run the two scripts (splitvid.py & pygamelabeler.py):
 
-"pip install opencv-python"
-
-"pip install pillow"
-
-"pip install pygame"
+"pip install -r requirements.txt"
 
 Open splitvid.py and change the name of the movie to the one you're going to use.  And the number of frames you want to extract (typically movies are something like 30 frames per second, so you may have problems if you try to extract a whole multi-hour long movie to jpg files).
+You'll extract the total number of frames between skip (number of frames to skip) and stop.
 
 Open labels.txt and make sure it has the class types (labels) you want in it.  They are comma separated.
 
