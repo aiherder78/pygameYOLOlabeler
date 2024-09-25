@@ -11,8 +11,12 @@ from copy import copy
 import math  #for finding the distance between two points when testing distance from cursor to boxes you might want to delete
 from operator import itemgetter  #for sorting a list, lets you do sorts of lists of list by multiple indexes
 
-#TODO:  Make the paths completely os agnostic - currently I'm coding for *nix paths
-#https://stackoverflow.com/questions/6036129/platform-independent-file-paths
+#TODO:  After using this to annotate stars in about 100 images of night skies, I realize that writing all the rectangles/boxes in every iteration
+#through the draw loop is too slow and unneeded.  Eliminating that is the most obvious way to get optimization cheaply.  Currently, after about 50
+#images, it stops responding well to mouse clicks (there's a wait and it acknowledges the click often after the mouse has moved, getting an unwanted
+#position).  In order to fix this, I'll need to only draw to scratchSurface when the set rectangles are added or removed.  The rest of the time,
+#I'll either not draw at all (test this - what happens on window moves?) or I'll use a third surface that is only for the dynamic boxes before one
+#gets added.
 
 #Idea:  I could make this intermittently copy already annotated image files and their annotations to a separate directory to be automatically
 #processed - to train a YOLO model, then have that model also running here (and updated as it finishes training), putting boxes of a blue color around things it thinks it recognizes
