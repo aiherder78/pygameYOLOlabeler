@@ -359,12 +359,21 @@ def calculateDistanceBetweenPoints(x1, y1, x2, y2):
 		return math.sqrt(((y2 - y1) * (y2 - y1)) + ((x2 - x1) * (x2 - x1)))  #just the formula for distance between two points written out long form for a computer
 
 
-def isPointInsideBox(x1, y1, boxX1, boxX2, boxY1, boxY2):
+def isPointInsideBox(x1, y1, boxX1, boxY1, boxX2, boxY2):
 	#Very simple check - checks whether either of the x, y coordinates are outside the range of the box on their axis
-	if x1 < boxX1 and x1 > boxX2:
+	if x1 < boxX1 or x1 > boxX2:
+		#print("x1 " + str(x1) + " is not between boxX1 " + str(boxX1) + " and boxX2 " + str(boxX2))
 		return False
-	if y1 < boxY1 and y1 > boxY2:
+	if y1 < boxY1 or y1 > boxY2:
+		#print("y1 " + str(y1) + " is not between boxY1 " + str(boxY1) + " and boxY2 " + str(boxY2))
 		return False
+	
+	#print("box match, returning true:  xy is inside this box according to this function:")
+	#print("x1, y1: " + str(x1)) + ", " + str(y1))
+	#print("boxX1: " + str(boxX1))
+	#print("boxX2: " + str(boxX2))
+	#print("boxY1: " + str(boxY1))
+	#print("boxY2: " + str(boxY2))
 	
 	return True
 
@@ -375,8 +384,8 @@ def removeBox(x1, y1, inputDirectory,imageFilename, imageWidth, imageHeight, box
 	#	Remove that box.  If there are multiple equidistant box upper left corners, then test for the closest lower right corner and remove that one...
 	boxMatches = []
 	for box in boxes:
-		test = isPointInsideBox(x1, y1, box[1], box[2], box[3], box[4])
-		if  test != False:
+		if isPointInsideBox(x1, y1, box[1], box[2], box[3], box[4]):
+			#print("for (X,Y):(" + str(x1) + "," + str(y1) + "), found box match (X1, Y1, X2, Y2): (" + str(box[1]) +", " + str(box[2]) + ", " + str(box[3]) + ", " + str(box[4]) + ")")
 			distanceToTopLeftCorner = calculateDistanceBetweenPoints(x1, y1, box[1], box[2])
 			distanceToBottomRightCorner = calculateDistanceBetweenPoints(x1, y1, box[3], box[4])
 			boxMatch = [distanceToTopLeftCorner, distanceToBottomRightCorner, box]
@@ -495,6 +504,7 @@ def getSurfaceFromSurface(surfaceToRefreshFrom):
 	
 	return pygame.image.fromstring(copyImage, surfaceSize, 'RGBA', False)	#returns a scratchSurface
 
+
 #TODO:  Work all potential bugs out with this
 def redrawAllBoxesOnScratchSurface(scratchSurface, boxes, boxColor, rectangleLineWidth, myfont):
 	if len(boxes) > 0:
@@ -503,7 +513,6 @@ def redrawAllBoxesOnScratchSurface(scratchSurface, boxes, boxColor, rectangleLin
 	
 	return scratchSurface
 	
-		
 
 def prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, labelIndex):
 	boxes = []
@@ -575,7 +584,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					pos = pygame.mouse.get_pos()
 						
 					if boxX1 is not None and boxX2 == None:
-						#This will add a box to the screen, to the boxes list, and to the annotation file
+						#This will add a box to the boxes list - since there's a new set box, the boxes should be redrawn
 						#print("received left click X2: " + str(pos[0]) + ", " + str(pos[1]))
 					
 						boxX2 = pos[0]
