@@ -584,7 +584,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					pos = pygame.mouse.get_pos()
 						
 					if boxX1 is not None and boxX2 == None:
-						#This will add a box to the boxes list - since there's a new set box, the boxes should be redrawn
+						#This will add a box to the screen, to the boxes list, and to the annotation file
 						#print("received left click X2: " + str(pos[0]) + ", " + str(pos[1]))
 					
 						boxX2 = pos[0]
@@ -606,9 +606,6 @@ def drawLoop(filenamesList, inputDirectory, labels):
 							drawRectangle(scratchSurface, red, rectangleLineWidth, boxX1, boxY1, boxX2, boxY2, label, myfont)
 						
 							boxX1, boxY1, boxX2, boxY2 = None, None, None, None    #Clear out the tracking values for the next rectangle
-							
-							#We probably don't need to redraw all the rectangles either
-							#scratchSurface = redrawAllBoxesOnScratchSurface(scratchSurface, boxes, red, rectangleLineWidth, myfont)
 							
 					
 					elif boxX1 == None:     #If there are no tracking points when left-clicked, this sets X1, Y1 up and the draw loop starts drawing a rect to the mouse pointer
