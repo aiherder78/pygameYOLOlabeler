@@ -575,7 +575,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					pos = pygame.mouse.get_pos()
 						
 					if boxX1 is not None and boxX2 == None:
-						#This will add a box to the boxes list - since there's a new set box, the boxes should be redrawn
+						#This will add a box to the screen, to the boxes list, and to the annotation file
 						#print("received left click X2: " + str(pos[0]) + ", " + str(pos[1]))
 					
 						boxX2 = pos[0]
