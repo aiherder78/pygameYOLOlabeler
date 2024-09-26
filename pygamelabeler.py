@@ -647,7 +647,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					exit("q key pressed, quitting.")
 				if event.key == pygame.K_s:
 					filenamesListOffset += 1
-					imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, window, boxX1, boxY1, boxX2, boxY2 = prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, labelIndex)
+					imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, scratchSurface, window, boxX1, boxY1, boxX2, boxY2 = prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, labelIndex)
 					
 				if event.key == pygame.K_d:
 					pos = pygame.mouse.get_pos()
