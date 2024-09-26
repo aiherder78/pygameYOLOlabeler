@@ -12,8 +12,15 @@ import math  #for finding the distance between two points when testing distance 
 from operator import itemgetter  #for sorting a list, lets you do sorts of lists of list by multiple indexes
 
 
-#TODO:  Found a bug - when clicking on empty area in the image when there are annotation boxes in the image, it deletes a box even though the mouse cursor isn't inside the box!
-#Probably has to do with something wrong with isInsideBox or removeBox not constraining that functionality somehow.
+#TODO:  'L', relabeled box to your currently set label.
+#TODO:  B could turn all box drawing off temporarily, then press it again to turn them back on.
+#TODO:  'C' could color all the boxes of your currently selected label to blue, leaving the rest red.  If you changed your selected label, the boxes with that label would turn blue
+#and the previously blue boxes would turn back to red.  This way, you could easily see all the boxes with the current label easily and you could step through the labels to see which ones were present
+#in an image visually.
+#TODO:  'H' display help using fonts.
+#TODO:  'A' adds the box when mouse is offscreen, have it remember where the mouse went offscreen and keep the box against the edge.
+#TODO:  'P' Go to previous image (I might reorient all these keys to be positioned better with respect to each other / make sense in context more than just standing for first letter of the function).
+#Right now I'm sometimes pressing 'S' instead of what I was wanting 'D'.  Those functions might need to be further apart.
 
 #Idea:  I could make this intermittently copy already annotated image files and their annotations to a separate directory to be automatically
 #processed - to train a YOLO model, then have that model also running here (and updated as it finishes training), putting boxes of a blue color around things it thinks it recognizes
@@ -645,9 +652,11 @@ def drawLoop(filenamesList, inputDirectory, labels):
 				if event.key == pygame.K_q:
 					print("Goodbye!")
 					exit("q key pressed, quitting.")
+					
 				if event.key == pygame.K_s:
 					filenamesListOffset += 1
 					imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, scratchSurface, window, boxX1, boxY1, boxX2, boxY2 = prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, labelIndex)
+					scratchSurface = redrawAllBoxesOnScratchSurface(scratchSurface, boxes, red, rectangleLineWidth, myfont)
 					
 				if event.key == pygame.K_d:
 					pos = pygame.mouse.get_pos()
