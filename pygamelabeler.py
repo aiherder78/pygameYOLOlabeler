@@ -11,12 +11,9 @@ from copy import copy
 import math  #for finding the distance between two points when testing distance from cursor to boxes you might want to delete
 from operator import itemgetter  #for sorting a list, lets you do sorts of lists of list by multiple indexes
 
-#TODO:  After using this to annotate stars in about 100 images of night skies, I realize that writing all the rectangles/boxes in every iteration
-#through the draw loop is too slow and unneeded.  Eliminating that is the most obvious way to get optimization cheaply.  Currently, after about 50
-#images, it stops responding well to mouse clicks (there's a wait and it acknowledges the click often after the mouse has moved, getting an unwanted
-#position).  In order to fix this, I'll need to only draw to scratchSurface when the set rectangles are added or removed.  The rest of the time,
-#I'll either not draw at all (test this - what happens on window moves?) or I'll use a third surface that is only for the dynamic boxes before one
-#gets added.
+
+#TODO:  Found a bug - when clicking on empty area in the image when there are annotation boxes in the image, it deletes a box even though the mouse cursor isn't inside the box!
+#Probably has to do with something wrong with isInsideBox or removeBox not constraining that functionality somehow.
 
 #Idea:  I could make this intermittently copy already annotated image files and their annotations to a separate directory to be automatically
 #processed - to train a YOLO model, then have that model also running here (and updated as it finishes training), putting boxes of a blue color around things it thinks it recognizes
@@ -461,6 +458,7 @@ def adjustXYvalues(boxX1, boxY1, boxX2, boxY2):
 
 
 #Convenience method for drawing rectangles on a pygame surface.
+#This doesn't need to return the surface in order for the surface to retain the changes
 def drawRectangle(surface, lineColorToDraw, lineDrawWidth, boxX1, boxY1, boxX2, boxY2, label, myfont):
 	#pygame.draw.rect(surface or array, rgb color in format (r, g, b), (x1, y1, rectangle width, rectangle height))
 	rectangleWidth = boxX2 - boxX1
@@ -475,7 +473,6 @@ def drawRectangle(surface, lineColorToDraw, lineDrawWidth, boxX1, boxY1, boxX2, 
 		#print("rectangleHeight <= 0")
 	
 	#TODO blit the label - do the above with lines, make the top line have enough space in between in the middle for the fonted label
-	return surface
 	
 	
 #https://stackoverflow.com/questions/6444548/how-do-i-get-the-picture-size-with-pil
@@ -486,6 +483,27 @@ def getImage(inputDirectory, imageFilename):
 	imageWidth, imageHeight = image.size
 	return image, imageWidth, imageHeight
 
+
+#To get the original image on surface:
+#scratchSurface = refreshSurface(imageCleanSurface)
+#To get the surface with already drawn boxes still on it - in order to draw a dynamic box every loop without always drawing all the boxes:
+#scratchSurface2 = refreshSurface(scratchSurface)
+def getSurfaceFromSurface(surfaceToRefreshFrom):
+	#data = pygame.image.tostring(imageCleanSurface, 'RGBA')
+	copyImage = pygame.image.tostring(surfaceToRefreshFrom, 'RGBA')
+	surfaceSize = surfaceToRefreshFrom.get_size()
+	
+	return pygame.image.fromstring(copyImage, surfaceSize, 'RGBA', False)	#returns a scratchSurface
+
+#TODO:  Work all potential bugs out with this
+def redrawAllBoxesOnScratchSurface(scratchSurface, boxes, boxColor, rectangleLineWidth, myfont):
+	if len(boxes) > 0:
+		for box in boxes:
+			drawRectangle(scratchSurface, boxColor, rectangleLineWidth, box[1], box[2], box[3], box[4], box[0], myfont)
+	
+	return scratchSurface
+	
+		
 
 def prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, labelIndex):
 	boxes = []
@@ -500,6 +518,7 @@ def prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, 
 		
 	boxes = getBoxesFromAnnotationFile(inputDirectory, imageFilename, imageWidth, imageHeight, labels) #just in case there are already annotations for this image...
 	imageCleanSurface = pygame.image.load(imageFilename)
+	scratchSurface = getSurfaceFromSurface(imageCleanSurface)
 	
 	window = pygame.display.set_mode((imageWidth, imageHeight))
 	window.fill((0, 0, 0))
@@ -507,7 +526,7 @@ def prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, 
 	label = labels[labelIndex]
 	pygame.display.set_caption('Pygame labeler. Current label: ' + label + ", image: " + imageFilename)
 	
-	return imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, window, None, None, None, None
+	return imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, scratchSurface, window, None, None, None, None
 
 
 #TODO:  Make this method much smaller later, once it's working, refactor out the draw stuff again
@@ -516,7 +535,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 	pygame.init()
 	
 	red = (255, 0, 0)
-	rectangleLineWidth = 5
+	rectangleLineWidth = 1
 	myfont = pygame.font.SysFont("monospace", 10)
 	
 	running = True
@@ -526,7 +545,8 @@ def drawLoop(filenamesList, inputDirectory, labels):
 	counter = 0
 	showCount = False
 	
-	imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, window, boxX1, boxY1, boxX2, boxY2 = prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, labelIndex)
+	imageFilename, image, imageWidth, imageHeight, boxes, imageCleanSurface, scratchSurface, window, boxX1, boxY1, boxX2, boxY2 = prepNextDataset(filenamesList, inputDirectory, filenamesListOffset, labels, labelIndex)
+	scratchSurface = redrawAllBoxesOnScratchSurface(scratchSurface, boxes, red, rectangleLineWidth, myfont)
 
 	while running and image is not None:
 		if showCount:		#an indicator for how fast the drawLoop while is running
@@ -555,6 +575,7 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					pos = pygame.mouse.get_pos()
 						
 					if boxX1 is not None and boxX2 == None:
+						#This will add a box to the boxes list - since there's a new set box, the boxes should be redrawn
 						#print("received left click X2: " + str(pos[0]) + ", " + str(pos[1]))
 					
 						boxX2 = pos[0]
@@ -572,8 +593,14 @@ def drawLoop(filenamesList, inputDirectory, labels):
 							boxList = [label, boxX1, boxY1, boxX2, boxY2]  #Now it's a list of lists, so more debugging down the method chain will be required
 							addAnnotationFileBox(inputDirectory, imageFilename, imageWidth, imageHeight, boxList, labels)
 							boxes.append(boxList)
+							#because we're adding a box, I don't need to refresh scratch surface...only need to do that before drawing if we're removing a box
+							drawRectangle(scratchSurface, red, rectangleLineWidth, boxX1, boxY1, boxX2, boxY2, label, myfont)
 						
 							boxX1, boxY1, boxX2, boxY2 = None, None, None, None    #Clear out the tracking values for the next rectangle
+							
+							#We probably don't need to redraw all the rectangles either
+							#scratchSurface = redrawAllBoxesOnScratchSurface(scratchSurface, boxes, red, rectangleLineWidth, myfont)
+							
 					
 					elif boxX1 == None:     #If there are no tracking points when left-clicked, this sets X1, Y1 up and the draw loop starts drawing a rect to the mouse pointer
 						#print("Received left click: " + str(pos[0]) + ", " + str(pos[1]))
@@ -620,19 +647,16 @@ def drawLoop(filenamesList, inputDirectory, labels):
 					pos = pygame.mouse.get_pos()
 					#Now we're going headhunting for a box to eliminate
 					boxes = removeBox(pos[0], pos[1], inputDirectory, imageFilename, imageWidth, imageHeight, boxes, labels)
-		
-		
-		#Do the display updates here
-		window.fill((0, 0, 0))
-		window.blit(imageCleanSurface, (0, 0))
-		
-		#Create a new surface with a copy of the original image so we don't mess that up while drawing temporary (dynamic) boxes
-		#Also, just in case we need to remove boxes, the original / clean image will be necessary for that
-		
-		#data = pygame.image.tostring(imageCleanSurface, 'RGBA')
-		scratchimage = pygame.image.tostring(imageCleanSurface, 'RGBA')
-		surfaceSize = imageCleanSurface.get_size()
-		scratchSurface = pygame.image.fromstring(scratchimage, surfaceSize, 'RGBA', False)
+					#Clear out scratchSurface first to make sure the deleted box goes away, then redraw all boxes on it
+					scratchSurface = getSurfaceFromSurface(imageCleanSurface)
+					scratchSurface = redrawAllBoxesOnScratchSurface(scratchSurface, boxes, red, rectangleLineWidth, myfont)
+
+
+		#Redraws the dynamic box onto scratchSurface2 every time through the loop, refreshing it from scratch surface each time first.
+		#This way only one box has to be drawn in the loop with the most refreshes, and scratch surface is only redrawn with all boxes when a box is added or removed.
+		#In this way, the annotator will be fast no matter how many boxes someone draws, only slowing down AFTER the second click is recorded to add a box, or AFTER d is pressed,
+		#meaning that it won't slow down in the main draw loop so much that mouse positions aren't correctly recorded correctly.
+		scratchSurface2 = getSurfaceFromSurface(scratchSurface)
 		
 		#Draw the dynamic box lines (to show the user where a box will be placed once they left-click once and before they left-click again to place it.
 		if boxX1 is not None and boxY1 is not None and boxX2 == None and boxY2 == None:			
@@ -642,15 +666,9 @@ def drawLoop(filenamesList, inputDirectory, labels):
 			mouseX = pos[0]
 			mouseY = pos[1]
 			tempX1, tempY1, mouseX, mouseY = adjustXYvalues(tempX1, tempY1, mouseX, mouseY)
-			scratchSurface = drawRectangle(scratchSurface, red, rectangleLineWidth, tempX1, tempY1, mouseX, mouseY, label, myfont)
+			drawRectangle(scratchSurface2, red, rectangleLineWidth, tempX1, tempY1, mouseX, mouseY, label, myfont)
 
-		if len(boxes) > 0:
-			for box in boxes:
-				scratchSurface = drawRectangle(scratchSurface, red, rectangleLineWidth, box[1], box[2], box[3], box[4], box[0], myfont)
-				window.blit(scratchSurface, (0, 0))
-
-		window.blit(scratchSurface, (0, 0))  #Only need one of these (though I'm not sure, may need separate ones for the font operations)
-		
+		window.blit(scratchSurface2, (0, 0))  #Only need one of these (though I'm not sure, may need separate ones for the font operations)
 		pygame.display.flip()
 
 	pygame.quit()
